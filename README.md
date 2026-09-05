@@ -63,16 +63,23 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 
 실제 설치 APK의 앱 서명 키는 Google Play App Signing이 생성·보관한다. CoinSDash 빌드 서버에는 별도의 **업로드 키**만 보관하며, 이 키로 서명한 AAB를 Play Console에 전달한다.
 
-서버 파일 배치:
+빌드 장비의 서명 파일 배치:
 
 ```text
 /etc/coinsdash/signing/upload.jks
 /etc/coinsdash/signing/signing.properties
 ```
 
+macOS 개발 장비에서는 다음 경로도 자동으로 인식한다.
+
+```text
+~/.config/coinsdash/signing/upload.jks
+~/.config/coinsdash/signing/signing.properties
+```
+
 `signing.properties` 형식은 저장소의 `signing.properties.example`을 따른다. 두 실제 파일은 전용 빌드 사용자만 읽을 수 있도록 디렉터리는 0700, 파일은 0600으로 설정한다. 저장소, APK/AAB, 로그 또는 명령행 인수에 키와 암호를 넣지 않는다.
 
-기본 경로에 키를 설치한 서버에서는 별도 옵션 없이 Production APK를 만든다.
+위 기본 경로에 키를 설치한 장비에서는 별도 옵션 없이 서명된 Production APK를 만든다.
 
 ```bash
 ./gradlew assembleRelease
