@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+**/build/
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+
+# Local SDK and machine-specific configuration
+local.properties
+
+# Android build artifacts
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing keys and local secrets
+*.jks
+*.keystore
+keystore.properties
+
+# macOS
+.DS_Store
