@@ -1,0 +1,4 @@
+storeFile=/etc/coinsdash/signing/upload.jks
+storePassword=replace-on-server
+keyAlias=upload
+keyPassword=replace-on-server

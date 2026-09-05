@@ -59,6 +59,30 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 ./gradlew test
 ```
 
+## Google Play 프로덕션 서명
+
+실제 설치 APK의 앱 서명 키는 Google Play App Signing이 생성·보관한다. CoinSDash 빌드 서버에는 별도의 **업로드 키**만 보관하며, 이 키로 서명한 AAB를 Play Console에 전달한다.
+
+서버 파일 배치:
+
+```text
+/etc/coinsdash/signing/upload.jks
+/etc/coinsdash/signing/signing.properties
+```
+
+`signing.properties` 형식은 저장소의 `signing.properties.example`을 따른다. 두 실제 파일은 전용 빌드 사용자만 읽을 수 있도록 디렉터리는 0700, 파일은 0600으로 설정한다. 저장소, APK/AAB, 로그 또는 명령행 인수에 키와 암호를 넣지 않는다.
+
+서버 Release 빌드:
+
+```bash
+COINSDASH_SIGNING_PROPERTIES=/etc/coinsdash/signing/signing.properties \
+  ./scripts/build-release.sh
+```
+
+스크립트는 설정과 keystore의 권한이 정확히 0600인지 검사하고 Gradle configuration cache를 끈 뒤 서명된 `app-release.aab`을 만든다. 결과 경로는 `app/build/outputs/bundle/release/app-release.aab`이다. 최초 Play Console 릴리스에서는 Google이 앱 서명 키를 생성하도록 선택하고, 이 AAB의 인증서는 업로드 키로 등록한다.
+
+업로드 키는 재발급할 수 있지만 빌드 연속성을 위해 암호화된 별도 백업을 보관한다. 실거래 CoinSDance 서버와 같은 장비를 사용해야 한다면 빌드 사용자와 디렉터리 권한을 반드시 분리한다.
+
 ## 연관 프로젝트
 
 - CoinSDance: Upbit 실거래 전략과 주문 실행을 담당하는 Go 서버
