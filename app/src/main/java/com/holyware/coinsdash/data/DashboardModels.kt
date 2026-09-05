@@ -35,6 +35,7 @@ data class Trade(
     val funds: Double,
     val fee: Double,
     val executedAt: String,
+    val netProfit: Double? = null,
 )
 
 data class DashboardSnapshot(

@@ -240,6 +240,14 @@ private fun TradeList(trades: List<Trade>) {
                     }
                     Text("${won(trade.funds)} · ${number(trade.volume)}개 @ ${won(trade.price)}")
                     Text("수수료 ${won(trade.fee)} · ${localTime(trade.executedAt)}", style = MaterialTheme.typography.labelSmall)
+                    if (trade.side == "sell") {
+						val profit = trade.netProfit
+						Text(
+							if (profit == null) "실수익 집계 전" else "실수익 ${if (profit >= 0) "+" else ""}${won(profit)}",
+							color = when { profit == null -> MaterialTheme.colorScheme.onSurfaceVariant; profit >= 0 -> Color(0xFFC62828); else -> Color(0xFF1565C0) },
+							fontWeight = FontWeight.Bold,
+						)
+					}
                 }
             }
         }

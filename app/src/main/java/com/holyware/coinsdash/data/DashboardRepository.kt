@@ -47,6 +47,7 @@ class DashboardRepository(context: Context) {
                     it.getString("uuid"), it.getString("market"), it.getString("side"),
                     it.optDouble("price"), it.optDouble("volume"), it.optDouble("funds"),
                     it.optDouble("fee"), it.getString("executed_at"),
+                    if (it.has("net_profit") && !it.isNull("net_profit")) it.getDouble("net_profit") else null,
                 )
             }.sortedByDescending { parseInstant(it.executedAt) },
         )
