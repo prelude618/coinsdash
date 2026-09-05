@@ -35,5 +35,5 @@ if [[ "$keystore_mode" != "600" ]]; then
 fi
 
 cd "$project_dir"
-exec ./gradlew --no-configuration-cache clean bundleRelease \
-  -PcoinsdashSigningProperties="$properties_file"
+exec env COINSDASH_SIGNING_PROPERTIES="$properties_file" \
+  ./gradlew --no-configuration-cache clean bundleRelease

@@ -72,11 +72,18 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 
 `signing.properties` 형식은 저장소의 `signing.properties.example`을 따른다. 두 실제 파일은 전용 빌드 사용자만 읽을 수 있도록 디렉터리는 0700, 파일은 0600으로 설정한다. 저장소, APK/AAB, 로그 또는 명령행 인수에 키와 암호를 넣지 않는다.
 
-서버 Release 빌드:
+기본 경로에 키를 설치한 서버에서는 별도 옵션 없이 Production APK를 만든다.
 
 ```bash
-COINSDASH_SIGNING_PROPERTIES=/etc/coinsdash/signing/signing.properties \
-  ./scripts/build-release.sh
+./gradlew assembleRelease
+```
+
+결과 경로는 `app/build/outputs/apk/release/app-release.apk`다. Release 서명 파일이 없으면 unsigned APK를 만들지 않고 빌드를 실패시킨다.
+
+Google Play 업로드용 AAB 빌드:
+
+```bash
+./scripts/build-release.sh
 ```
 
 스크립트는 설정과 keystore의 권한이 정확히 0600인지 검사하고 Gradle configuration cache를 끈 뒤 서명된 `app-release.aab`을 만든다. 결과 경로는 `app/build/outputs/bundle/release/app-release.aab`이다. 최초 Play Console 릴리스에서는 Google이 앱 서명 키를 생성하도록 선택하고, 이 AAB의 인증서는 업로드 키로 등록한다.

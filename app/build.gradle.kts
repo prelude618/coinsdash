@@ -6,9 +6,18 @@ plugins {
 }
 
 val signingPropertiesPath = providers.gradleProperty("coinsdashSigningProperties").orNull
-val releaseSigningProperties = signingPropertiesPath?.let { path ->
+    ?: providers.environmentVariable("COINSDASH_SIGNING_PROPERTIES").orNull
+    ?: "/etc/coinsdash/signing/signing.properties"
+val signingPropertiesFile = rootProject.file(signingPropertiesPath).takeIf { it.isFile }
+val releaseSigningProperties = signingPropertiesFile?.let { file ->
     Properties().apply {
-        rootProject.file(path).inputStream().use(::load)
+        file.inputStream().use(::load)
+    }
+}
+
+if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) {
+    check(signingPropertiesFile != null) {
+        "Release signing is required. Install /etc/coinsdash/signing/signing.properties or set COINSDASH_SIGNING_PROPERTIES."
     }
 }
 
