@@ -37,6 +37,7 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 - Android Gradle Plugin 9.3.2
 - Android API 24 이상
 - Java 11
+- Firebase 프로젝트 `samsung-connect-auto` 연결
 
 ## 개발 환경
 

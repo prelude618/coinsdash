@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "349103355526",
+    "firebase_url": "https://samsung-connect-auto.firebaseio.com",
+    "project_id": "samsung-connect-auto",
+    "storage_bucket": "samsung-connect-auto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349103355526:android:84307b372a11ffe0034307",
+        "android_client_info": {
+          "package_name": "com.holyware.coinsdash"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "349103355526-22gdajqjhkccq9fk34mbe5h3368oo9tc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADQy9HLmd-vtWdS4PVgU5i2W3m9f6VipU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "349103355526-22gdajqjhkccq9fk34mbe5h3368oo9tc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
