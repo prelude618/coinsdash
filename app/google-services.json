@@ -1,37 +1,26 @@
 {
   "project_info": {
-    "project_number": "349103355526",
-    "firebase_url": "https://samsung-connect-auto.firebaseio.com",
-    "project_id": "samsung-connect-auto",
-    "storage_bucket": "samsung-connect-auto.firebasestorage.app"
+    "project_number": "1030465432679",
+    "project_id": "coinsdance-72c2c",
+    "storage_bucket": "coinsdance-72c2c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:349103355526:android:84307b372a11ffe0034307",
+        "mobilesdk_app_id": "1:1030465432679:android:05ede3db8fdefeeed2b8c2",
         "android_client_info": {
           "package_name": "com.holyware.coinsdash"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "349103355526-22gdajqjhkccq9fk34mbe5h3368oo9tc.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyADQy9HLmd-vtWdS4PVgU5i2W3m9f6VipU"
+          "current_key": "AIzaSyAwNqjkQ7kuad4Xgu-08z9QYIO0UWp0sT0"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "349103355526-22gdajqjhkccq9fk34mbe5h3368oo9tc.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
