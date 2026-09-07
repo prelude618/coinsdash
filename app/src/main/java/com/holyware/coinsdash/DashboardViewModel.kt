@@ -29,10 +29,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     val state: StateFlow<DashboardUiState> = mutableState.asStateFlow()
 
     init {
+        refresh()
         viewModelScope.launch {
             while (isActive) {
-                refresh()
                 delay(5_000)
+                refresh()
             }
         }
     }
@@ -46,8 +47,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun refresh() {
         val settings = mutableState.value.settings
         if (settings.baseUrl.isBlank() || settings.dashboardToken.isBlank() || mutableState.value.loading) return
+        mutableState.value = mutableState.value.copy(loading = true, connectionError = null)
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(loading = true)
             runCatching { withContext(Dispatchers.IO) { repository.fetchDashboard(settings) } }
                 .onSuccess {
                     mutableState.value = mutableState.value.copy(

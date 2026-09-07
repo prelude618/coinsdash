@@ -108,7 +108,7 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (Screen.entries[selected]) {
-                Screen.Overview -> OverviewScreen(state.snapshot, state.connectionError)
+                Screen.Overview -> OverviewScreen(state.snapshot, state.connectionError, state.loading)
                 Screen.Coins -> CoinsScreen(state.snapshot)
                 Screen.History -> HistoryScreen(state.snapshot)
                 Screen.Settings -> SettingsScreen(state.settings, viewModel)
@@ -123,10 +123,10 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
 }
 
 @Composable
-private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String?) {
+private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String?, loading: Boolean) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Spacer(Modifier.height(4.dp)) }
-        item { BotCard(snapshot?.bot, connectionError) }
+        item { BotCard(snapshot?.bot, connectionError, loading) }
         val money = snapshot?.money
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -160,18 +160,32 @@ private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String
 }
 
 @Composable
-private fun BotCard(bot: BotStatus?, connectionError: String?) {
+private fun BotCard(bot: BotStatus?, connectionError: String?, loading: Boolean) {
+    val waiting = bot == null && connectionError == null
     val alive = bot?.alive == true && connectionError == null
-    val color = if (alive) Color(0xFF16803A) else MaterialTheme.colorScheme.error
+    val color = when {
+        alive -> Color(0xFF16803A)
+        waiting -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
+    }
     Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .11f))) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.background(color, RoundedCornerShape(50)).padding(5.dp))
-                Text(if (alive) "  봇 정상 실행 중" else "  봇 장애 또는 연결 끊김", fontWeight = FontWeight.Bold, color = color)
+                Text(
+                    when {
+                        alive -> "  봇 정상 실행 중"
+                        waiting && loading -> "  봇 상태 확인 중"
+                        waiting -> "  서버 설정 필요"
+                        else -> "  봇 장애 또는 연결 끊김"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    color = color,
+                )
             }
             val error = connectionError ?: bot?.error
             if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Text("마지막 신호: ${localTime(bot?.lastHeartbeat)}", style = MaterialTheme.typography.labelMedium)
+            if (bot != null) Text("마지막 신호: ${localTime(bot.lastHeartbeat)}", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
