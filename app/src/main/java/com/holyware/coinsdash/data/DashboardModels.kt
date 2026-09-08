@@ -44,6 +44,7 @@ data class DashboardSnapshot(
     val money: MoneySummary = MoneySummary(),
     val buyTracking: Int = 0,
     val sellTracking: Int = 0,
+    val minimumBuy: Double = 0.0,
     val registered: List<CoinStatus> = emptyList(),
     val delistings: List<Delisting> = emptyList(),
     val trades: List<Trade> = emptyList(),

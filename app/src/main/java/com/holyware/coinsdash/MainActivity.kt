@@ -150,7 +150,10 @@ private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String
         item {
             val active = snapshot?.registered?.count { it.buyActive } ?: 0
             val registered = snapshot?.registered?.size ?: 0
-            CountCard("등록 ${registered}개 · 신규 매수 대상", active, MaterialTheme.colorScheme.primary, Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CountCard("등록 ${registered}개 · 신규 매수 대상", active, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                MinimumBuyCard(snapshot?.minimumBuy ?: 0.0, Modifier.weight(1f))
+            }
         }
         item { Text("최근 등록해제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         if (snapshot?.delistings.isNullOrEmpty()) item { EmptyCard("기록된 등록해제 종목이 없습니다.") }
@@ -204,6 +207,16 @@ private fun MoneyCard(label: String, value: Double, modifier: Modifier, emphasiz
 private fun CountCard(label: String, value: Int, color: Color, modifier: Modifier) {
     Card(modifier, colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .10f))) {
         Column(Modifier.padding(14.dp)) { Text(label, style = MaterialTheme.typography.labelMedium); Text("${value}개", style = MaterialTheme.typography.headlineSmall, color = color, fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun MinimumBuyCard(value: Double, modifier: Modifier) {
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = .10f))) {
+        Column(Modifier.padding(14.dp)) {
+            Text("최소 1회 매수금액", style = MaterialTheme.typography.labelMedium)
+            Text(if (value > 0) won(value) else "-", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
