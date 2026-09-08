@@ -27,6 +27,8 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 - `GET /api/v1/dashboard`: 자산, 봇 상태, 추적 수, 등록 코인, 등록해제 이력과 최근 거래
 
 앱은 저장된 서버 설정이 있으면 실행 즉시 대시보드를 조회한다. 첫 응답 전에는 장애로 단정하지 않고 `봇 상태 확인 중`을 표시하며, 조회 실패가 확인된 경우에만 연결 오류를 표시한다.
+
+등록 코인 목록은 매수 대상 여부와 별개로 모든 종목에 `보유` 또는 `미보유`를 명시한다. 매수원가 오름차순 선택 때문에 미보유 종목이 매수 대상으로 우선 배치되더라도 상태를 오해하지 않도록 한다.
 - `PUT /api/v1/credentials`: 새 업비트 Access/Secret Key 검증 및 교체
 - 요청 헤더: `Authorization: Bearer <DASHBOARD_TOKEN>`
 

@@ -218,7 +218,11 @@ private fun CoinsScreen(snapshot: DashboardSnapshot?) {
             Card(colors = CardDefaults.cardColors(containerColor = if (coin.buyActive) Color(0xFF1B5E20).copy(alpha = .12f) else MaterialTheme.colorScheme.surfaceVariant)) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(coin.market.removePrefix("KRW-"), fontWeight = FontWeight.Bold); Text(coin.market, style = MaterialTheme.typography.labelSmall) }
-                    if (coin.held) Text("보유  ", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        if (coin.held) "보유  " else "미보유  ",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (coin.held) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Text(if (coin.buyActive) "매수 대상" else "매도 관리", color = if (coin.buyActive) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 }
             }
