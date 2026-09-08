@@ -2,6 +2,8 @@
 
 CoinSDash는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 상태를 Android에서 확인하기 위한 대시보드 앱입니다.
 
+현재 배포 버전은 **1.0.3 (versionCode 4)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다.
+
 ## 현재 상태
 
 Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현되어 있습니다. 실제 사용 전 CoinSDance 서버에 대시보드 API와 HTTPS 진입점을 배포하고 앱 설정에 서버 주소와 인증 토큰을 입력해야 합니다.
