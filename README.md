@@ -2,7 +2,7 @@
 
 CoinSDash는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 상태를 Android에서 확인하기 위한 대시보드 앱입니다.
 
-현재 배포 버전은 **1.0.3 (versionCode 4)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다.
+현재 배포 버전은 **1.0.4 (versionCode 5)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다.
 
 ## 현재 상태
 
