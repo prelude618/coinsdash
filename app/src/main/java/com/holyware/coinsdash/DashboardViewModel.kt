@@ -21,6 +21,7 @@ data class DashboardUiState(
     val loading: Boolean = false,
     val connectionError: String? = null,
     val lastSuccessfulRefresh: Long? = null,
+    val consecutiveFailures: Int = 0,
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -40,7 +41,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun saveSettings(settings: ConnectionSettings) {
         repository.saveSettings(settings)
-        mutableState.value = mutableState.value.copy(settings = repository.loadSettings(), connectionError = null)
+        mutableState.value = mutableState.value.copy(settings = repository.loadSettings(), connectionError = null, consecutiveFailures = 0)
         refresh()
     }
 
@@ -54,9 +55,16 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     mutableState.value = mutableState.value.copy(
                         snapshot = it, loading = false, connectionError = null,
                         lastSuccessfulRefresh = System.currentTimeMillis(),
+                        consecutiveFailures = 0,
                     )
                 }
-                .onFailure { mutableState.value = mutableState.value.copy(loading = false, connectionError = it.message ?: "연결 실패") }
+                .onFailure {
+                    mutableState.value = mutableState.value.copy(
+                        loading = false,
+                        connectionError = it.message ?: "연결 실패",
+                        consecutiveFailures = mutableState.value.consecutiveFailures + 1,
+                    )
+                }
         }
     }
 

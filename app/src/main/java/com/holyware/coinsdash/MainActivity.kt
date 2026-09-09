@@ -52,7 +52,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.holyware.coinsdash.data.BotStatus
 import com.holyware.coinsdash.data.CoinStatus
 import com.holyware.coinsdash.data.ConnectionSettings
 import com.holyware.coinsdash.data.DashboardSnapshot
@@ -108,7 +107,7 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (Screen.entries[selected]) {
-                Screen.Overview -> OverviewScreen(state.snapshot, state.connectionError, state.loading)
+                Screen.Overview -> OverviewScreen(state)
                 Screen.Coins -> CoinsScreen(state.snapshot)
                 Screen.History -> HistoryScreen(state.snapshot)
                 Screen.Settings -> SettingsScreen(state.settings, viewModel)
@@ -123,10 +122,11 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
 }
 
 @Composable
-private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String?, loading: Boolean) {
+private fun OverviewScreen(state: DashboardUiState) {
+    val snapshot = state.snapshot
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Spacer(Modifier.height(4.dp)) }
-        item { BotCard(snapshot?.bot, connectionError, loading) }
+        item { BotCard(state) }
         val money = snapshot?.money
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -162,31 +162,45 @@ private fun OverviewScreen(snapshot: DashboardSnapshot?, connectionError: String
     }
 }
 
+internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_SETTINGS, OUTAGE }
+
+internal fun botPresentation(state: DashboardUiState): BotPresentation {
+    val configured = state.settings.baseUrl.isNotBlank() && state.settings.dashboardToken.isNotBlank()
+    return when {
+        !configured -> BotPresentation.NEEDS_SETTINGS
+        state.snapshot?.bot?.alive == false -> BotPresentation.OUTAGE
+        state.consecutiveFailures >= 3 -> BotPresentation.OUTAGE
+        state.consecutiveFailures > 0 -> BotPresentation.CHECKING
+        state.snapshot?.bot?.alive == true -> BotPresentation.HEALTHY
+        else -> BotPresentation.CHECKING
+    }
+}
+
 @Composable
-private fun BotCard(bot: BotStatus?, connectionError: String?, loading: Boolean) {
-    val waiting = bot == null && connectionError == null
-    val alive = bot?.alive == true && connectionError == null
-    val color = when {
-        alive -> Color(0xFF16803A)
-        waiting -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.error
+private fun BotCard(state: DashboardUiState) {
+    val bot = state.snapshot?.bot
+    val presentation = botPresentation(state)
+    val color = when (presentation) {
+        BotPresentation.HEALTHY -> Color(0xFF16803A)
+        BotPresentation.CHECKING, BotPresentation.NEEDS_SETTINGS -> MaterialTheme.colorScheme.primary
+        BotPresentation.OUTAGE -> MaterialTheme.colorScheme.error
     }
     Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .11f))) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.background(color, RoundedCornerShape(50)).padding(5.dp))
                 Text(
-                    when {
-                        alive -> "  봇 정상 실행 중"
-                        waiting && loading -> "  봇 상태 확인 중"
-                        waiting -> "  서버 설정 필요"
-                        else -> "  봇 장애 또는 연결 끊김"
+                    when (presentation) {
+                        BotPresentation.HEALTHY -> "  봇 정상 실행 중"
+                        BotPresentation.CHECKING -> "  봇 상태 확인 중"
+                        BotPresentation.NEEDS_SETTINGS -> "  서버 설정 필요"
+                        BotPresentation.OUTAGE -> "  봇 장애 또는 연결 끊김"
                     },
                     fontWeight = FontWeight.Bold,
                     color = color,
                 )
             }
-            val error = connectionError ?: bot?.error
+            val error = if (presentation == BotPresentation.OUTAGE) state.connectionError ?: bot?.error else bot?.error
             if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             if (bot != null) Text("마지막 신호: ${localTime(bot.lastHeartbeat)}", style = MaterialTheme.typography.labelMedium)
         }

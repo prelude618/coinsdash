@@ -1,17 +1,45 @@
 package com.holyware.coinsdash
 
+import com.holyware.coinsdash.data.BotStatus
+import com.holyware.coinsdash.data.ConnectionSettings
+import com.holyware.coinsdash.data.DashboardSnapshot
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
-import org.junit.Assert.*
-
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
 class ExampleUnitTest {
+    private val settings = ConnectionSettings("https://dash.example.com", "token")
+
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun botStatusRemainsCheckingDuringRetries() {
+        val healthy = DashboardSnapshot(bot = BotStatus(alive = true))
+
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(settings = settings, loading = true)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 1)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 2)))
+        assertEquals(BotPresentation.OUTAGE, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 3)))
+    }
+
+    @Test
+    fun successfulResponseClearsCheckingState() {
+        val state = DashboardUiState(
+            snapshot = DashboardSnapshot(bot = BotStatus(alive = true)),
+            settings = settings,
+            consecutiveFailures = 0,
+        )
+        assertEquals(BotPresentation.HEALTHY, botPresentation(state))
+    }
+
+    @Test
+    fun confirmedBotFailureIsShownImmediately() {
+        val state = DashboardUiState(
+            snapshot = DashboardSnapshot(bot = BotStatus(alive = false)),
+            settings = settings,
+        )
+        assertEquals(BotPresentation.OUTAGE, botPresentation(state))
+    }
+
+    @Test
+    fun missingSettingsIsNotReportedAsOutage() {
+        assertEquals(BotPresentation.NEEDS_SETTINGS, botPresentation(DashboardUiState()))
     }
 }
