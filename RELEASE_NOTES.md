@@ -1,5 +1,15 @@
 # Coinsdance 릴리스 노트
 
+## 1.0.5 (versionCode 6)
+
+- Firebase Google 로그인을 위한 Android 및 Web OAuth 클라이언트 설정을 갱신합니다.
+- 앱 재설치 후 서버 주소와 공용 인증 토큰을 다시 입력하지 않도록 Google 로그인 기반 인증으로 전환을 준비합니다.
+- 향후 Google Play App Signing 인증서 지문을 Firebase에 추가하면 같은 로그인 구현을 그대로 사용할 수 있습니다.
+
+### Firebase App Distribution용
+
+Google 로그인 전환을 위한 Firebase OAuth 구성을 갱신했습니다. 서버 주소와 공용 인증 토큰 입력을 제거하는 로그인 기능은 Firebase 서버 검증 키와 허용 계정 설정을 완료한 뒤 활성화됩니다.
+
 ## 1.0.4 (versionCode 5)
 
 - Android 런처와 앱 상단의 사용자 표시 이름을 `Coinsdance`로 통일합니다.

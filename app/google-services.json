@@ -12,7 +12,20 @@
           "package_name": "com.holyware.coinsdash"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1030465432679-o4cmnps3i06im6ebr4v56oruo5h20sbj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.holyware.coinsdash",
+            "certificate_hash": "1f881df66022d1d969dfaa79380624d1e85383ac"
+          }
+        },
+        {
+          "client_id": "1030465432679-q10hmoi168mj7ur6jvfg5p82513gc5hs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAwNqjkQ7kuad4Xgu-08z9QYIO0UWp0sT0"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1030465432679-q10hmoi168mj7ur6jvfg5p82513gc5hs.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
