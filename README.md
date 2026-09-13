@@ -6,7 +6,7 @@ Coinsdance는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 �
 
 ## 현재 상태
 
-Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현되어 있습니다. 실제 사용 전 CoinSDance 서버에 대시보드 API와 HTTPS 진입점을 배포하고 앱 설정에 서버 주소와 인증 토큰을 입력해야 합니다.
+Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현되어 있습니다. 앱은 Firebase Google 로그인으로 사용자를 인증하고 고정된 CoinSDance HTTPS 서버에 자동 연결합니다.
 
 ## 예정 기능
 
@@ -22,19 +22,19 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 
 ## 보안 원칙
 
-업비트 API 키와 Secret Key를 Android 앱에 저장하거나 포함하지 않습니다. 키 갱신 화면은 사용자가 입력한 키를 HTTPS로 서버에 한 번 전달하고 입력값을 즉시 비웁니다. Coinsdance는 Bearer 토큰으로 인증된 CoinSDance 서버 API만 호출하며 HTTP 주소를 거부합니다. 실제 주문 권한은 서버에만 두고 앱 백업도 비활성화합니다. 앱과 저장소에는 비밀값을 커밋하지 않습니다.
+업비트 API 키와 Secret Key를 Android 앱에 저장하거나 포함하지 않습니다. 키 갱신 화면은 사용자가 입력한 키를 HTTPS로 서버에 한 번 전달하고 입력값을 즉시 비웁니다. 앱은 Firebase ID 토큰을 Bearer 인증값으로 보내며 서버는 Google 서명, 이메일 인증 여부와 허용 계정 목록을 모두 검증합니다. 서버 주소와 공용 인증 토큰을 사용자에게 입력받거나 기기에 저장하지 않습니다. 실제 주문 권한과 Firebase Admin 서비스 계정 키는 서버에만 두고 앱 백업도 비활성화합니다. 비밀값은 Git에 커밋하지 않습니다.
 
 ## 서버 API 계약
 
 - `GET /api/v1/dashboard`: 자산, 봇 상태, 추적 수, 등록 코인, 등록해제 이력과 최근 거래
 
-앱은 저장된 서버 설정이 있으면 실행 즉시 대시보드를 조회한다. 첫 응답 전과 통신 실패 후 자동 재시도 중에는 `봇 상태 확인 중`을 표시한다. 5초 간격 재시도가 3회 연속 실패하거나 서버의 정상 응답이 `alive=false`일 때만 `봇 장애 또는 연결 끊김`을 표시한다. 응답에 성공하면 실패 횟수는 즉시 0으로 초기화되고 정상 상태로 돌아온다.
+로그인 세션이 없으면 앱의 첫 화면에는 Google 로그인만 표시되고 로그인 성공 후 메인 대시보드로 이동한다. 기존 Firebase 로그인 세션이 있으면 로그인 화면을 건너뛰고 즉시 대시보드를 조회한다. 로그아웃은 설정 화면에서 실행한다. 첫 응답 전과 통신 실패 후 자동 재시도 중에는 `봇 상태 확인 중`을 표시한다. 5초 간격 재시도가 3회 연속 실패하거나 서버의 정상 응답이 `alive=false`일 때만 `봇 장애 또는 연결 끊김`을 표시한다. 응답에 성공하면 실패 횟수는 즉시 0으로 초기화되고 정상 상태로 돌아온다.
 
 등록 코인 목록은 매수 대상 여부와 별개로 모든 종목에 `보유` 또는 `미보유`를 명시한다. 매수원가 오름차순 선택 때문에 미보유 종목이 매수 대상으로 우선 배치되더라도 상태를 오해하지 않도록 한다.
 - `PUT /api/v1/credentials`: 새 업비트 Access/Secret Key 검증 및 교체
-- 요청 헤더: `Authorization: Bearer <DASHBOARD_TOKEN>`
+- 요청 헤더: `Authorization: Bearer <FIREBASE_ID_TOKEN>`
 
-앱의 설정 화면에서 유효한 인증서가 적용된 `https://` 서버 주소와 대시보드 토큰을 입력합니다. CoinSDance의 내부 8080 포트를 인터넷에 직접 노출하지 않습니다.
+앱 설정에서 허용된 Google 계정으로 로그인합니다. 현재 서버 주소는 앱에 고정되어 있으며 CoinSDance의 내부 8080 포트는 인터넷에 직접 노출하지 않습니다. Firebase Console에는 배포 APK의 SHA-1/SHA-256이 등록되어야 합니다. 향후 Google Play 배포 시에는 Play App Signing이 발급한 앱 서명 인증서 지문도 Firebase Android 앱에 추가하고 새 `google-services.json`으로 교체합니다.
 
 ## 기술 구성
 

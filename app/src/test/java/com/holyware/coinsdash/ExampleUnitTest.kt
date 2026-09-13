@@ -1,29 +1,28 @@
 package com.holyware.coinsdash
 
 import com.holyware.coinsdash.data.BotStatus
-import com.holyware.coinsdash.data.ConnectionSettings
 import com.holyware.coinsdash.data.DashboardSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ExampleUnitTest {
-    private val settings = ConnectionSettings("https://dash.example.com", "token")
+    private val email = "prelude618@gmail.com"
 
     @Test
     fun botStatusRemainsCheckingDuringRetries() {
         val healthy = DashboardSnapshot(bot = BotStatus(alive = true))
 
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(settings = settings, loading = true)))
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 1)))
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 2)))
-        assertEquals(BotPresentation.OUTAGE, botPresentation(DashboardUiState(snapshot = healthy, settings = settings, consecutiveFailures = 3)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(signedInEmail = email, loading = true)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 1)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 2)))
+        assertEquals(BotPresentation.OUTAGE, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 3)))
     }
 
     @Test
     fun successfulResponseClearsCheckingState() {
         val state = DashboardUiState(
             snapshot = DashboardSnapshot(bot = BotStatus(alive = true)),
-            settings = settings,
+            signedInEmail = email,
             consecutiveFailures = 0,
         )
         assertEquals(BotPresentation.HEALTHY, botPresentation(state))
@@ -33,13 +32,13 @@ class ExampleUnitTest {
     fun confirmedBotFailureIsShownImmediately() {
         val state = DashboardUiState(
             snapshot = DashboardSnapshot(bot = BotStatus(alive = false)),
-            settings = settings,
+            signedInEmail = email,
         )
         assertEquals(BotPresentation.OUTAGE, botPresentation(state))
     }
 
     @Test
-    fun missingSettingsIsNotReportedAsOutage() {
-        assertEquals(BotPresentation.NEEDS_SETTINGS, botPresentation(DashboardUiState()))
+    fun signedOutIsNotReportedAsOutage() {
+        assertEquals(BotPresentation.NEEDS_LOGIN, botPresentation(DashboardUiState()))
     }
 }

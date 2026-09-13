@@ -51,5 +51,3 @@ data class DashboardSnapshot(
     val delistings: List<Delisting> = emptyList(),
     val trades: List<Trade> = emptyList(),
 )
-
-data class ConnectionSettings(val baseUrl: String = "", val dashboardToken: String = "")

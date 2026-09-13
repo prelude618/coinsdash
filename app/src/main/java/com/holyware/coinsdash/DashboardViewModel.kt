@@ -1,9 +1,9 @@
 package com.holyware.coinsdash
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.holyware.coinsdash.data.ConnectionSettings
 import com.holyware.coinsdash.data.DashboardRepository
 import com.holyware.coinsdash.data.DashboardSnapshot
 import kotlinx.coroutines.Dispatchers
@@ -17,16 +17,19 @@ import kotlinx.coroutines.withContext
 
 data class DashboardUiState(
     val snapshot: DashboardSnapshot? = null,
-    val settings: ConnectionSettings = ConnectionSettings(),
     val loading: Boolean = false,
+    val authLoading: Boolean = false,
+    val signedInEmail: String? = null,
+    val authError: String? = null,
     val connectionError: String? = null,
     val lastSuccessfulRefresh: Long? = null,
     val consecutiveFailures: Int = 0,
 )
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = DashboardRepository(application)
-    private val mutableState = MutableStateFlow(DashboardUiState(settings = repository.loadSettings()))
+    private val repository = DashboardRepository()
+    private val auth = GoogleAuthManager(application)
+    private val mutableState = MutableStateFlow(DashboardUiState(signedInEmail = auth.currentEmail))
     val state: StateFlow<DashboardUiState> = mutableState.asStateFlow()
 
     init {
@@ -39,18 +42,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun saveSettings(settings: ConnectionSettings) {
-        repository.saveSettings(settings)
-        mutableState.value = mutableState.value.copy(settings = repository.loadSettings(), connectionError = null, consecutiveFailures = 0)
-        refresh()
-    }
-
     fun refresh() {
-        val settings = mutableState.value.settings
-        if (settings.baseUrl.isBlank() || settings.dashboardToken.isBlank() || mutableState.value.loading) return
+        if (mutableState.value.signedInEmail == null || mutableState.value.loading) return
         mutableState.value = mutableState.value.copy(loading = true, connectionError = null)
         viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { repository.fetchDashboard(settings) } }
+            runCatching {
+                val token = auth.idToken()
+                withContext(Dispatchers.IO) { repository.fetchDashboard(token) }
+            }
                 .onSuccess {
                     mutableState.value = mutableState.value.copy(
                         snapshot = it, loading = false, connectionError = null,
@@ -68,8 +67,37 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun signIn(context: Context) {
+        if (mutableState.value.authLoading) return
+        mutableState.value = mutableState.value.copy(authLoading = true, authError = null)
+        viewModelScope.launch {
+            runCatching { GoogleAuthManager(context).signIn() }
+                .onSuccess { email ->
+                    mutableState.value = mutableState.value.copy(
+                        signedInEmail = email,
+                        authLoading = false,
+                        authError = null,
+                        connectionError = null,
+                        consecutiveFailures = 0,
+                    )
+                    refresh()
+                }
+                .onFailure {
+                    mutableState.value = mutableState.value.copy(authLoading = false, authError = it.message ?: "Google 로그인 실패")
+                }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            runCatching { auth.signOut() }
+            mutableState.value = DashboardUiState()
+        }
+    }
+
     suspend fun updateKeys(accessKey: String, secretKey: String): Result<Unit> = runCatching {
-        withContext(Dispatchers.IO) { repository.updateUpbitKeys(mutableState.value.settings, accessKey, secretKey) }
+        val token = auth.idToken()
+        withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
         refresh()
     }
 }

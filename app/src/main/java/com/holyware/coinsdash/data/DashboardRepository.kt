@@ -1,30 +1,14 @@
 package com.holyware.coinsdash.data
 
-import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 
-class DashboardRepository(context: Context) {
-    private val preferences = context.getSharedPreferences("coinsdash", Context.MODE_PRIVATE)
-
-    fun loadSettings() = ConnectionSettings(
-        baseUrl = preferences.getString("base_url", "") ?: "",
-        dashboardToken = preferences.getString("dashboard_token", "") ?: "",
-    )
-
-    fun saveSettings(settings: ConnectionSettings) {
-        preferences.edit()
-            .putString("base_url", settings.baseUrl.trim().trimEnd('/'))
-            .putString("dashboard_token", settings.dashboardToken.trim())
-            .apply()
-    }
-
-    fun fetchDashboard(settings: ConnectionSettings): DashboardSnapshot {
-        require(settings.baseUrl.startsWith("https://")) { "서버 주소는 HTTPS여야 합니다." }
-        val json = request(settings, "GET", "/api/v1/dashboard")
+class DashboardRepository {
+    fun fetchDashboard(idToken: String): DashboardSnapshot {
+        val json = request(idToken, "GET", "/api/v1/dashboard")
         val bot = json.getJSONObject("bot")
         val money = json.getJSONObject("money")
         return DashboardSnapshot(
@@ -56,24 +40,24 @@ class DashboardRepository(context: Context) {
         )
     }
 
-    fun updateUpbitKeys(settings: ConnectionSettings, accessKey: String, secretKey: String) {
+    fun updateUpbitKeys(idToken: String, accessKey: String, secretKey: String) {
         require(accessKey.isNotBlank() && secretKey.isNotBlank()) { "Access Key와 Secret Key를 모두 입력하세요." }
         request(
-            settings,
+            idToken,
             "PUT",
             "/api/v1/credentials",
             JSONObject().put("access_key", accessKey.trim()).put("secret_key", secretKey.trim()).toString(),
         )
     }
 
-    private fun request(settings: ConnectionSettings, method: String, path: String, body: String? = null): JSONObject {
-        require(settings.dashboardToken.isNotBlank()) { "대시보드 인증 토큰을 입력하세요." }
-        val connection = URL(settings.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
+    private fun request(idToken: String, method: String, path: String, body: String? = null): JSONObject {
+        require(idToken.isNotBlank()) { "Google 로그인이 필요합니다." }
+        val connection = URL(SERVER_URL + path).openConnection() as HttpURLConnection
         return try {
             connection.requestMethod = method
             connection.connectTimeout = 8_000
             connection.readTimeout = 12_000
-            connection.setRequestProperty("Authorization", "Bearer ${settings.dashboardToken}")
+            connection.setRequestProperty("Authorization", "Bearer $idToken")
             connection.setRequestProperty("Accept", "application/json")
             if (body != null) {
                 connection.doOutput = true
@@ -88,6 +72,10 @@ class DashboardRepository(context: Context) {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private companion object {
+        const val SERVER_URL = "https://3.39.151.27.nip.io"
     }
 }
 

@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,7 +54,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.holyware.coinsdash.data.CoinStatus
-import com.holyware.coinsdash.data.ConnectionSettings
 import com.holyware.coinsdash.data.DashboardSnapshot
 import com.holyware.coinsdash.data.Delisting
 import com.holyware.coinsdash.data.Trade
@@ -81,6 +81,10 @@ private enum class Screen(val label: String, val symbol: String) {
 @Composable
 fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
+    if (state.signedInEmail == null) {
+        LoginScreen(state, viewModel)
+        return
+    }
     var selected by remember { mutableIntStateOf(0) }
     Scaffold(
         topBar = {
@@ -110,12 +114,40 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
                 Screen.Overview -> OverviewScreen(state)
                 Screen.Coins -> CoinsScreen(state.snapshot)
                 Screen.History -> HistoryScreen(state.snapshot)
-                Screen.Settings -> SettingsScreen(state.settings, viewModel)
+                Screen.Settings -> SettingsScreen(state, viewModel)
             }
-            if (state.settings.baseUrl.isBlank()) {
-                Surface(Modifier.align(Alignment.BottomCenter).padding(16.dp), color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(12.dp)) {
-                    Text("설정에서 CoinSDance 서버 주소와 인증 토큰을 입력하세요.", Modifier.padding(14.dp))
+        }
+    }
+}
+
+@Composable
+private fun LoginScreen(state: DashboardUiState, viewModel: DashboardViewModel) {
+    val context = LocalContext.current
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("Coinsdance", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("CoinSDance 실시간 관제", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(32.dp))
+            Button(
+                enabled = !state.authLoading,
+                onClick = { viewModel.signIn(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (state.authLoading) {
+                    CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
+                    Text("  로그인 중…")
+                } else {
+                    Text("Google로 로그인")
                 }
+            }
+            if (!state.authError.isNullOrBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text(state.authError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -162,12 +194,11 @@ private fun OverviewScreen(state: DashboardUiState) {
     }
 }
 
-internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_SETTINGS, OUTAGE }
+internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_LOGIN, OUTAGE }
 
 internal fun botPresentation(state: DashboardUiState): BotPresentation {
-    val configured = state.settings.baseUrl.isNotBlank() && state.settings.dashboardToken.isNotBlank()
     return when {
-        !configured -> BotPresentation.NEEDS_SETTINGS
+        state.signedInEmail == null -> BotPresentation.NEEDS_LOGIN
         state.snapshot?.bot?.alive == false -> BotPresentation.OUTAGE
         state.consecutiveFailures >= 3 -> BotPresentation.OUTAGE
         state.consecutiveFailures > 0 -> BotPresentation.CHECKING
@@ -182,7 +213,7 @@ private fun BotCard(state: DashboardUiState) {
     val presentation = botPresentation(state)
     val color = when (presentation) {
         BotPresentation.HEALTHY -> Color(0xFF16803A)
-        BotPresentation.CHECKING, BotPresentation.NEEDS_SETTINGS -> MaterialTheme.colorScheme.primary
+        BotPresentation.CHECKING, BotPresentation.NEEDS_LOGIN -> MaterialTheme.colorScheme.primary
         BotPresentation.OUTAGE -> MaterialTheme.colorScheme.error
     }
     Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .11f))) {
@@ -193,7 +224,7 @@ private fun BotCard(state: DashboardUiState) {
                     when (presentation) {
                         BotPresentation.HEALTHY -> "  봇 정상 실행 중"
                         BotPresentation.CHECKING -> "  봇 상태 확인 중"
-                        BotPresentation.NEEDS_SETTINGS -> "  서버 설정 필요"
+                        BotPresentation.NEEDS_LOGIN -> "  Google 로그인 필요"
                         BotPresentation.OUTAGE -> "  봇 장애 또는 연결 끊김"
                     },
                     fontWeight = FontWeight.Bold,
@@ -323,19 +354,23 @@ private fun DelistingRow(item: Delisting) {
 }
 
 @Composable
-private fun SettingsScreen(settings: ConnectionSettings, viewModel: DashboardViewModel) {
-    var baseUrl by remember(settings.baseUrl) { mutableStateOf(settings.baseUrl) }
-    var token by remember(settings.dashboardToken) { mutableStateOf(settings.dashboardToken) }
+private fun SettingsScreen(state: DashboardUiState, viewModel: DashboardViewModel) {
     var showKeys by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("서버 연결", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-        item { OutlinedTextField(baseUrl, { baseUrl = it }, label = { Text("HTTPS 서버 주소") }, placeholder = { Text("https://dash.example.com") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)) }
-        item { OutlinedTextField(token, { token = it }, label = { Text("대시보드 인증 토큰") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = PasswordVisualTransformation()) }
-        item { Button(onClick = { viewModel.saveSettings(ConnectionSettings(baseUrl, token)) }, modifier = Modifier.fillMaxWidth()) { Text("연결 설정 저장") } }
+        item { Text("Google 계정", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        if (state.signedInEmail == null) {
+            item { Text("CoinSDance 사용이 허용된 Google 계정으로 로그인하세요.", style = MaterialTheme.typography.bodySmall) }
+            item { Button(enabled = !state.authLoading, onClick = { viewModel.signIn(context) }, modifier = Modifier.fillMaxWidth()) { Text(if (state.authLoading) "로그인 중…" else "Google로 로그인") } }
+        } else {
+            item { Text(state.signedInEmail, fontWeight = FontWeight.Bold) }
+            item { OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") } }
+        }
+        if (!state.authError.isNullOrBlank()) item { Text(state.authError, color = MaterialTheme.colorScheme.error) }
         item { HorizontalDivider() }
         item { Text("업비트 API 키", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         item { Text("키는 앱에 저장하지 않고 HTTPS로 서버에 한 번 전달합니다. 서버는 새 키를 검증한 후 교체해야 합니다.", style = MaterialTheme.typography.bodySmall) }
-        item { OutlinedButton(onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
+        item { OutlinedButton(enabled = state.signedInEmail != null, onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
     }
     if (showKeys) KeyDialog(viewModel) { showKeys = false }
 }

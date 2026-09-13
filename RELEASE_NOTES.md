@@ -2,13 +2,16 @@
 
 ## 1.0.5 (versionCode 6)
 
-- Firebase Google 로그인을 위한 Android 및 Web OAuth 클라이언트 설정을 갱신합니다.
-- 앱 재설치 후 서버 주소와 공용 인증 토큰을 다시 입력하지 않도록 Google 로그인 기반 인증으로 전환을 준비합니다.
+- Firebase Credential Manager 기반 Google 로그인을 추가합니다.
+- 로그인 세션이 없으면 Google 로그인 전용 화면을 먼저 표시하고, 성공 후에만 메인 대시보드로 이동합니다. 기존 세션이 있으면 메인 화면으로 바로 진입합니다.
+- 서버 주소와 공용 인증 토큰 입력을 제거하고 Firebase ID 토큰으로 서버에 자동 연결합니다.
+- 로그인된 Google 계정을 설정 화면에서 확인하고 로그아웃할 수 있습니다.
+- 업비트 API 키 갱신도 동일한 Google 인증으로 보호합니다.
 - 향후 Google Play App Signing 인증서 지문을 Firebase에 추가하면 같은 로그인 구현을 그대로 사용할 수 있습니다.
 
 ### Firebase App Distribution용
 
-Google 로그인 전환을 위한 Firebase OAuth 구성을 갱신했습니다. 서버 주소와 공용 인증 토큰 입력을 제거하는 로그인 기능은 Firebase 서버 검증 키와 허용 계정 설정을 완료한 뒤 활성화됩니다.
+서버 주소나 인증 토큰을 직접 입력할 필요 없이 허용된 Google 계정으로 로그인하면 CoinSDance에 자동 연결됩니다. 앱 재설치 후에도 Google 계정으로 다시 로그인할 수 있으며, 허용되지 않은 계정은 서버에서 차단됩니다.
 
 ## 1.0.4 (versionCode 5)
 
