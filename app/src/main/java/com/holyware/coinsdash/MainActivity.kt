@@ -85,7 +85,7 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Column { Text("CoinSDash", fontWeight = FontWeight.Bold); Text("CoinSDance 실시간 관제", style = MaterialTheme.typography.labelSmall) } },
+                title = { Column { Text("Coinsdance", fontWeight = FontWeight.Bold); Text("CoinSDance 실시간 관제", style = MaterialTheme.typography.labelSmall) } },
                 actions = {
                     if (state.loading) CircularProgressIndicator(Modifier.padding(14.dp).height(22.dp), strokeWidth = 2.dp)
                     TextButton(onClick = viewModel::refresh) { Text("새로고침") }

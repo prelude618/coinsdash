@@ -1,6 +1,6 @@
-# CoinSDash
+# Coinsdance
 
-CoinSDash는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 상태를 Android에서 확인하기 위한 대시보드 앱입니다.
+Coinsdance는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 상태를 Android에서 확인하기 위한 대시보드 앱입니다.
 
 현재 배포 버전은 **1.0.4 (versionCode 5)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다.
 
@@ -22,7 +22,7 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 
 ## 보안 원칙
 
-업비트 API 키와 Secret Key를 Android 앱에 저장하거나 포함하지 않습니다. 키 갱신 화면은 사용자가 입력한 키를 HTTPS로 서버에 한 번 전달하고 입력값을 즉시 비웁니다. CoinSDash는 Bearer 토큰으로 인증된 CoinSDance 서버 API만 호출하며 HTTP 주소를 거부합니다. 실제 주문 권한은 서버에만 두고 앱 백업도 비활성화합니다. 앱과 저장소에는 비밀값을 커밋하지 않습니다.
+업비트 API 키와 Secret Key를 Android 앱에 저장하거나 포함하지 않습니다. 키 갱신 화면은 사용자가 입력한 키를 HTTPS로 서버에 한 번 전달하고 입력값을 즉시 비웁니다. Coinsdance는 Bearer 토큰으로 인증된 CoinSDance 서버 API만 호출하며 HTTP 주소를 거부합니다. 실제 주문 권한은 서버에만 두고 앱 백업도 비활성화합니다. 앱과 저장소에는 비밀값을 커밋하지 않습니다.
 
 ## 서버 API 계약
 
@@ -68,7 +68,7 @@ Jetpack Compose 대시보드와 CoinSDance HTTPS API 클라이언트가 구현�
 
 ## Google Play 프로덕션 서명
 
-실제 설치 APK의 앱 서명 키는 Google Play App Signing이 생성·보관한다. CoinSDash 빌드 서버에는 별도의 **업로드 키**만 보관하며, 이 키로 서명한 AAB를 Play Console에 전달한다.
+실제 설치 APK의 앱 서명 키는 Google Play App Signing이 생성·보관한다. Coinsdance 빌드 서버에는 별도의 **업로드 키**만 보관하며, 이 키로 서명한 AAB를 Play Console에 전달한다.
 
 빌드 장비의 서명 파일 배치:
 
@@ -107,4 +107,4 @@ Google Play 업로드용 AAB 빌드:
 ## 연관 프로젝트
 
 - CoinSDance: Upbit 실거래 전략과 주문 실행을 담당하는 Go 서버
-- CoinSDash: CoinSDance의 운영 상태를 표시하는 Android 클라이언트
+- Coinsdance: CoinSDance의 운영 상태를 표시하는 Android 클라이언트
