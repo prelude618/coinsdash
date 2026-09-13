@@ -36,6 +36,8 @@ class DashboardRepository(context: Context) {
             ),
             buyTracking = json.optInt("buy_tracking"),
             sellTracking = json.optInt("sell_tracking"),
+            buyHooked = json.optInt("buy_hooked"),
+            sellHooked = json.optInt("sell_hooked"),
             minimumBuy = json.optDouble("minimum_buy"),
             registered = json.optJSONArray("registered").objects().map {
                 CoinStatus(it.getString("market"), it.optBoolean("buy_active"), it.optBoolean("held"))

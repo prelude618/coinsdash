@@ -143,8 +143,8 @@ private fun OverviewScreen(state: DashboardUiState) {
         item { MoneyCard("총코인평가액", money?.coinValue ?: 0.0, Modifier.fillMaxWidth()) }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CountCard("매수 저점 추적", snapshot?.buyTracking ?: 0, Color(0xFF2E7D32), Modifier.weight(1f))
-                CountCard("매도 고점 추적", snapshot?.sellTracking ?: 0, Color(0xFFC62828), Modifier.weight(1f))
+                CountCard("매수 저점 추적", snapshot?.buyTracking ?: 0, Color(0xFF2E7D32), Modifier.weight(1f), snapshot?.buyHooked ?: 0)
+                CountCard("매도 고점 추적", snapshot?.sellTracking ?: 0, Color(0xFFC62828), Modifier.weight(1f), snapshot?.sellHooked ?: 0)
             }
         }
         item {
@@ -218,9 +218,12 @@ private fun MoneyCard(label: String, value: Double, modifier: Modifier, emphasiz
 }
 
 @Composable
-private fun CountCard(label: String, value: Int, color: Color, modifier: Modifier) {
+private fun CountCard(label: String, value: Int, color: Color, modifier: Modifier, hooked: Int? = null) {
     Card(modifier, colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .10f))) {
-        Column(Modifier.padding(14.dp)) { Text(label, style = MaterialTheme.typography.labelMedium); Text("${value}개", style = MaterialTheme.typography.headlineSmall, color = color, fontWeight = FontWeight.Bold) }
+        Column(Modifier.padding(14.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text("${value}개${hooked?.let { " ($it)" }.orEmpty()}", style = MaterialTheme.typography.headlineSmall, color = color, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
