@@ -63,6 +63,22 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun connectionErrorRequiresThreeConsecutiveFailures() {
+        val failure = IllegalStateException("network down")
+        val first = connectionAfterFailure(ConnectionUiState(), failure)
+        val second = connectionAfterFailure(first, failure)
+        val third = connectionAfterFailure(second, failure)
+
+        assertEquals(ConnectionStatus.LOADING, first.status)
+        assertEquals(null, first.error)
+        assertEquals(ConnectionStatus.LOADING, second.status)
+        assertEquals(null, second.error)
+        assertEquals(ConnectionStatus.ERROR, third.status)
+        assertEquals("network down", third.error)
+        assertEquals(3, third.consecutiveFailures)
+    }
+
+    @Test
     fun krwPrefixIsHiddenFromTradeMarketName() {
         assertEquals("B3", marketDisplayName("KRW-B3"))
         assertEquals("BTC-USDT", marketDisplayName("BTC-USDT"))

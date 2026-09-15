@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.holyware.coinsdash.data.AuthenticationRequiredException
 import com.holyware.coinsdash.data.DashboardRepository
 import com.holyware.coinsdash.data.DashboardSnapshot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,6 +41,18 @@ internal data class DashboardUiState(
     val auth: AuthUiState = AuthUiState(),
     val connection: ConnectionUiState = ConnectionUiState(),
 )
+
+internal const val CONNECTION_FAILURE_LIMIT = 3
+
+internal fun connectionAfterFailure(current: ConnectionUiState, error: Throwable): ConnectionUiState {
+    val failures = current.consecutiveFailures + 1
+    return current.copy(
+        status = if (failures >= CONNECTION_FAILURE_LIMIT) ConnectionStatus.ERROR else ConnectionStatus.LOADING,
+        refreshing = false,
+        error = if (failures >= CONNECTION_FAILURE_LIMIT) error.message ?: "연결 실패" else null,
+        consecutiveFailures = failures,
+    )
+}
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DashboardRepository()
@@ -99,21 +112,29 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     ),
                 )
             }.onFailure { error ->
+                // Activity resume, logout, and a new authentication attempt all
+                // cancel an obsolete request. Cancellation is control flow, not
+                // a network failure, and must never increment the error count.
+                if (error is CancellationException) return@onFailure
                 if (error is AuthenticationRequiredException) {
                     handleAuthenticationFailure(error.message)
                     return@onFailure
                 }
-                val failures = mutableState.value.connection.consecutiveFailures + 1
                 mutableState.value = mutableState.value.copy(
-                    connection = mutableState.value.connection.copy(
-                        status = if (failures >= 3) ConnectionStatus.ERROR else ConnectionStatus.LOADING,
-                        refreshing = false,
-                        error = if (failures >= 3) error.message ?: "연결 실패" else null,
-                        consecutiveFailures = failures,
-                    ),
+                    connection = connectionAfterFailure(mutableState.value.connection, error),
                 )
             }
         }
+    }
+
+    fun onForeground() {
+        val current = mutableState.value
+        if (current.auth.status != AuthStatus.AUTHENTICATED) return
+        refreshJob?.cancel()
+        mutableState.value = current.copy(
+            connection = ConnectionUiState(status = ConnectionStatus.LOADING),
+        )
+        refresh()
     }
 
     fun signIn(context: Context) {
