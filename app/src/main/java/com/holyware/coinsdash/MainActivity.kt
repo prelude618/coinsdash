@@ -81,9 +81,16 @@ private enum class Screen(val label: String, val symbol: String) {
 @Composable
 fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
     val state by viewModel.state.collectAsState()
-    if (state.signedInEmail == null) {
-        LoginScreen(state, viewModel)
-        return
+    when (state.auth.status) {
+        AuthStatus.CHECKING -> {
+            AuthenticationLoadingScreen()
+            return
+        }
+        AuthStatus.SIGNED_OUT -> {
+            LoginScreen(state, viewModel)
+            return
+        }
+        AuthStatus.AUTHENTICATED -> Unit
     }
     var selected by remember { mutableIntStateOf(0) }
     Scaffold(
@@ -91,7 +98,7 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
             TopAppBar(
                 title = { Column { Text("Coinsdance", fontWeight = FontWeight.Bold); Text("CoinSDance 실시간 관제", style = MaterialTheme.typography.labelSmall) } },
                 actions = {
-                    if (state.loading) CircularProgressIndicator(Modifier.padding(14.dp).height(22.dp), strokeWidth = 2.dp)
+                    if (state.connection.refreshing) CircularProgressIndicator(Modifier.padding(14.dp).height(22.dp), strokeWidth = 2.dp)
                     TextButton(onClick = viewModel::refresh) { Text("새로고침") }
                 },
             )
@@ -121,6 +128,21 @@ fun CoinSDashApp(viewModel: DashboardViewModel = viewModel()) {
 }
 
 @Composable
+private fun AuthenticationLoadingScreen() {
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(16.dp))
+            Text("Google 로그인 확인 중")
+        }
+    }
+}
+
+@Composable
 private fun LoginScreen(state: DashboardUiState, viewModel: DashboardViewModel) {
     val context = LocalContext.current
     Surface(Modifier.fillMaxSize()) {
@@ -134,20 +156,15 @@ private fun LoginScreen(state: DashboardUiState, viewModel: DashboardViewModel) 
             Text("CoinSDance 실시간 관제", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(32.dp))
             Button(
-                enabled = !state.authLoading,
+                enabled = state.auth.status != AuthStatus.CHECKING,
                 onClick = { viewModel.signIn(context) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (state.authLoading) {
-                    CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
-                    Text("  로그인 중…")
-                } else {
-                    Text("Google로 로그인")
-                }
+                Text("Google로 로그인")
             }
-            if (!state.authError.isNullOrBlank()) {
+            if (!state.auth.error.isNullOrBlank()) {
                 Spacer(Modifier.height(12.dp))
-                Text(state.authError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(state.auth.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -197,13 +214,15 @@ private fun OverviewScreen(state: DashboardUiState) {
 internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_LOGIN, OUTAGE }
 
 internal fun botPresentation(state: DashboardUiState): BotPresentation {
-    return when {
-        state.signedInEmail == null -> BotPresentation.NEEDS_LOGIN
-        state.snapshot?.bot?.alive == false -> BotPresentation.OUTAGE
-        state.consecutiveFailures >= 3 -> BotPresentation.OUTAGE
-        state.consecutiveFailures > 0 -> BotPresentation.CHECKING
-        state.snapshot?.bot?.alive == true -> BotPresentation.HEALTHY
-        else -> BotPresentation.CHECKING
+    if (state.auth.status != AuthStatus.AUTHENTICATED) return BotPresentation.NEEDS_LOGIN
+    return when (state.connection.status) {
+        ConnectionStatus.LOADING -> BotPresentation.CHECKING
+        ConnectionStatus.ERROR -> BotPresentation.OUTAGE
+        ConnectionStatus.CONNECTED -> when (state.snapshot?.bot?.alive) {
+            true -> BotPresentation.HEALTHY
+            false -> BotPresentation.OUTAGE
+            null -> BotPresentation.CHECKING
+        }
     }
 }
 
@@ -231,7 +250,7 @@ private fun BotCard(state: DashboardUiState) {
                     color = color,
                 )
             }
-            val error = if (presentation == BotPresentation.OUTAGE) state.connectionError ?: bot?.error else bot?.error
+            val error = if (presentation == BotPresentation.OUTAGE) state.connection.error ?: bot?.error else bot?.error
             if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             if (bot != null) Text("마지막 신호: ${localTime(bot.lastHeartbeat)}", style = MaterialTheme.typography.labelMedium)
         }
@@ -361,18 +380,12 @@ private fun SettingsScreen(state: DashboardUiState, viewModel: DashboardViewMode
     val context = LocalContext.current
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("Google 계정", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-        if (state.signedInEmail == null) {
-            item { Text("CoinSDance 사용이 허용된 Google 계정으로 로그인하세요.", style = MaterialTheme.typography.bodySmall) }
-            item { Button(enabled = !state.authLoading, onClick = { viewModel.signIn(context) }, modifier = Modifier.fillMaxWidth()) { Text(if (state.authLoading) "로그인 중…" else "Google로 로그인") } }
-        } else {
-            item { Text(state.signedInEmail, fontWeight = FontWeight.Bold) }
-            item { OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") } }
-        }
-        if (!state.authError.isNullOrBlank()) item { Text(state.authError, color = MaterialTheme.colorScheme.error) }
+        item { Text(state.auth.email.orEmpty(), fontWeight = FontWeight.Bold) }
+        item { OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") } }
         item { HorizontalDivider() }
         item { Text("업비트 API 키", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         item { Text("키는 앱에 저장하지 않고 HTTPS로 서버에 한 번 전달합니다. 서버는 새 키를 검증한 후 교체해야 합니다.", style = MaterialTheme.typography.bodySmall) }
-        item { OutlinedButton(enabled = state.signedInEmail != null, onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
+        item { OutlinedButton(onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
     }
     if (showKeys) KeyDialog(viewModel) { showKeys = false }
 }

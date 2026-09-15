@@ -11,19 +11,20 @@ class ExampleUnitTest {
     @Test
     fun botStatusRemainsCheckingDuringRetries() {
         val healthy = DashboardSnapshot(bot = BotStatus(alive = true))
+        val authenticated = AuthUiState(AuthStatus.AUTHENTICATED, email)
 
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(signedInEmail = email, loading = true)))
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 1)))
-        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 2)))
-        assertEquals(BotPresentation.OUTAGE, botPresentation(DashboardUiState(snapshot = healthy, signedInEmail = email, consecutiveFailures = 3)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(auth = authenticated)))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, auth = authenticated, connection = ConnectionUiState(status = ConnectionStatus.LOADING, consecutiveFailures = 1))))
+        assertEquals(BotPresentation.CHECKING, botPresentation(DashboardUiState(snapshot = healthy, auth = authenticated, connection = ConnectionUiState(status = ConnectionStatus.LOADING, consecutiveFailures = 2))))
+        assertEquals(BotPresentation.OUTAGE, botPresentation(DashboardUiState(snapshot = healthy, auth = authenticated, connection = ConnectionUiState(status = ConnectionStatus.ERROR, consecutiveFailures = 3))))
     }
 
     @Test
     fun successfulResponseClearsCheckingState() {
         val state = DashboardUiState(
             snapshot = DashboardSnapshot(bot = BotStatus(alive = true)),
-            signedInEmail = email,
-            consecutiveFailures = 0,
+            auth = AuthUiState(AuthStatus.AUTHENTICATED, email),
+            connection = ConnectionUiState(ConnectionStatus.CONNECTED),
         )
         assertEquals(BotPresentation.HEALTHY, botPresentation(state))
     }
@@ -32,14 +33,33 @@ class ExampleUnitTest {
     fun confirmedBotFailureIsShownImmediately() {
         val state = DashboardUiState(
             snapshot = DashboardSnapshot(bot = BotStatus(alive = false)),
-            signedInEmail = email,
+            auth = AuthUiState(AuthStatus.AUTHENTICATED, email),
+            connection = ConnectionUiState(ConnectionStatus.CONNECTED),
         )
         assertEquals(BotPresentation.OUTAGE, botPresentation(state))
     }
 
     @Test
     fun signedOutIsNotReportedAsOutage() {
-        assertEquals(BotPresentation.NEEDS_LOGIN, botPresentation(DashboardUiState()))
+        val signedOut = DashboardUiState(auth = AuthUiState(AuthStatus.SIGNED_OUT))
+        assertEquals(BotPresentation.NEEDS_LOGIN, botPresentation(signedOut))
+    }
+
+    @Test
+    fun defaultConnectionStateIsLoadingAndIndependentFromAuthentication() {
+        val state = DashboardUiState(auth = AuthUiState(AuthStatus.AUTHENTICATED, email))
+        assertEquals(ConnectionStatus.LOADING, state.connection.status)
+        assertEquals(BotPresentation.CHECKING, botPresentation(state))
+    }
+
+    @Test
+    fun staleBotFailureIsIgnoredWhileConnectionIsLoading() {
+        val state = DashboardUiState(
+            snapshot = DashboardSnapshot(bot = BotStatus(alive = false)),
+            auth = AuthUiState(AuthStatus.AUTHENTICATED, email),
+            connection = ConnectionUiState(ConnectionStatus.LOADING),
+        )
+        assertEquals(BotPresentation.CHECKING, botPresentation(state))
     }
 
     @Test

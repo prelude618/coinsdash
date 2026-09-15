@@ -4,9 +4,11 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.holyware.coinsdash.data.AuthenticationRequiredException
 import com.holyware.coinsdash.data.DashboardRepository
 import com.holyware.coinsdash.data.DashboardSnapshot
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,24 +17,39 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class DashboardUiState(
-    val snapshot: DashboardSnapshot? = null,
-    val loading: Boolean = false,
-    val authLoading: Boolean = false,
-    val signedInEmail: String? = null,
-    val authError: String? = null,
-    val connectionError: String? = null,
+internal enum class AuthStatus { CHECKING, AUTHENTICATED, SIGNED_OUT }
+
+internal data class AuthUiState(
+    val status: AuthStatus = AuthStatus.CHECKING,
+    val email: String? = null,
+    val error: String? = null,
+)
+
+internal enum class ConnectionStatus { LOADING, CONNECTED, ERROR }
+
+internal data class ConnectionUiState(
+    val status: ConnectionStatus = ConnectionStatus.LOADING,
+    val refreshing: Boolean = false,
+    val error: String? = null,
     val lastSuccessfulRefresh: Long? = null,
     val consecutiveFailures: Int = 0,
 )
 
+internal data class DashboardUiState(
+    val snapshot: DashboardSnapshot? = null,
+    val auth: AuthUiState = AuthUiState(),
+    val connection: ConnectionUiState = ConnectionUiState(),
+)
+
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DashboardRepository()
-    private val auth = GoogleAuthManager(application)
-    private val mutableState = MutableStateFlow(DashboardUiState(signedInEmail = auth.currentEmail))
-    val state: StateFlow<DashboardUiState> = mutableState.asStateFlow()
+    private val authManager = GoogleAuthManager(application)
+    private val mutableState = MutableStateFlow(DashboardUiState())
+    internal val state: StateFlow<DashboardUiState> = mutableState.asStateFlow()
+    private var refreshJob: Job? = null
 
     init {
+        initializeAuthentication()
         refresh()
         viewModelScope.launch {
             while (isActive) {
@@ -42,62 +59,111 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private fun initializeAuthentication() {
+        val email = authManager.currentEmail
+        mutableState.value = DashboardUiState(
+            auth = if (email == null) {
+                AuthUiState(status = AuthStatus.SIGNED_OUT)
+            } else {
+                AuthUiState(status = AuthStatus.AUTHENTICATED, email = email)
+            },
+        )
+    }
+
     fun refresh() {
-        if (mutableState.value.signedInEmail == null || mutableState.value.loading) return
-        mutableState.value = mutableState.value.copy(loading = true, connectionError = null)
-        viewModelScope.launch {
+        val current = mutableState.value
+        if (current.auth.status != AuthStatus.AUTHENTICATED || current.connection.refreshing) return
+
+        mutableState.value = current.copy(
+            connection = current.connection.copy(
+                status = if (current.connection.status == ConnectionStatus.CONNECTED) {
+                    ConnectionStatus.CONNECTED
+                } else {
+                    ConnectionStatus.LOADING
+                },
+                refreshing = true,
+                error = null,
+            ),
+        )
+        refreshJob = viewModelScope.launch {
             runCatching {
-                val token = auth.idToken()
+                val token = authManager.idToken()
                 withContext(Dispatchers.IO) { repository.fetchDashboard(token) }
-            }
-                .onSuccess {
-                    mutableState.value = mutableState.value.copy(
-                        snapshot = it, loading = false, connectionError = null,
+            }.onSuccess { snapshot ->
+                if (mutableState.value.auth.status != AuthStatus.AUTHENTICATED) return@onSuccess
+                mutableState.value = mutableState.value.copy(
+                    snapshot = snapshot,
+                    connection = ConnectionUiState(
+                        status = ConnectionStatus.CONNECTED,
                         lastSuccessfulRefresh = System.currentTimeMillis(),
-                        consecutiveFailures = 0,
-                    )
+                    ),
+                )
+            }.onFailure { error ->
+                if (error is AuthenticationRequiredException) {
+                    handleAuthenticationFailure(error.message)
+                    return@onFailure
                 }
-                .onFailure {
-                    mutableState.value = mutableState.value.copy(
-                        loading = false,
-                        connectionError = it.message ?: "연결 실패",
-                        consecutiveFailures = mutableState.value.consecutiveFailures + 1,
-                    )
-                }
+                val failures = mutableState.value.connection.consecutiveFailures + 1
+                mutableState.value = mutableState.value.copy(
+                    connection = mutableState.value.connection.copy(
+                        status = if (failures >= 3) ConnectionStatus.ERROR else ConnectionStatus.LOADING,
+                        refreshing = false,
+                        error = if (failures >= 3) error.message ?: "연결 실패" else null,
+                        consecutiveFailures = failures,
+                    ),
+                )
+            }
         }
     }
 
     fun signIn(context: Context) {
-        if (mutableState.value.authLoading) return
-        mutableState.value = mutableState.value.copy(authLoading = true, authError = null)
+        if (mutableState.value.auth.status == AuthStatus.CHECKING) return
+        refreshJob?.cancel()
+        mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.CHECKING))
         viewModelScope.launch {
             runCatching { GoogleAuthManager(context).signIn() }
                 .onSuccess { email ->
-                    mutableState.value = mutableState.value.copy(
-                        signedInEmail = email,
-                        authLoading = false,
-                        authError = null,
-                        connectionError = null,
-                        consecutiveFailures = 0,
+                    mutableState.value = DashboardUiState(
+                        auth = AuthUiState(status = AuthStatus.AUTHENTICATED, email = email),
                     )
                     refresh()
                 }
-                .onFailure {
-                    mutableState.value = mutableState.value.copy(authLoading = false, authError = it.message ?: "Google 로그인 실패")
+                .onFailure { error ->
+                    mutableState.value = DashboardUiState(
+                        auth = AuthUiState(
+                            status = AuthStatus.SIGNED_OUT,
+                            error = error.message ?: "Google 로그인 실패",
+                        ),
+                    )
                 }
         }
     }
 
     fun signOut() {
+        refreshJob?.cancel()
+        mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.CHECKING))
         viewModelScope.launch {
-            runCatching { auth.signOut() }
-            mutableState.value = DashboardUiState()
+            runCatching { authManager.signOut() }
+            mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.SIGNED_OUT))
         }
     }
 
     suspend fun updateKeys(accessKey: String, secretKey: String): Result<Unit> = runCatching {
-        val token = auth.idToken()
+        val token = authManager.idToken()
         withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
         refresh()
+    }.onFailure { error ->
+        if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
+    }
+
+    private fun handleAuthenticationFailure(message: String?) {
+        refreshJob?.cancel()
+        viewModelScope.launch { runCatching { authManager.signOut() } }
+        mutableState.value = DashboardUiState(
+            auth = AuthUiState(
+                status = AuthStatus.SIGNED_OUT,
+                error = message ?: "Google 인증이 만료되었습니다. 다시 로그인하세요.",
+            ),
+        )
     }
 }

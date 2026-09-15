@@ -67,6 +67,9 @@ class DashboardRepository {
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code == 401 || code == 403) {
+                throw AuthenticationRequiredException("Google 인증을 다시 확인해야 합니다. 로그인해 주세요.")
+            }
             if (code !in 200..299) error("서버 오류 $code: ${text.take(300)}")
             if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {

@@ -5,9 +5,11 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import com.holyware.coinsdash.data.AuthenticationRequiredException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
@@ -37,9 +39,16 @@ class GoogleAuthManager(private val context: Context) {
             ?: error("Google 계정 이메일을 확인할 수 없습니다.")
     }
 
-    suspend fun idToken(forceRefresh: Boolean = false): String =
-        firebaseAuth.currentUser?.getIdToken(forceRefresh)?.await()?.token
-            ?: error("Google 로그인이 필요합니다.")
+    suspend fun idToken(forceRefresh: Boolean = false): String {
+        val user = firebaseAuth.currentUser
+            ?: throw AuthenticationRequiredException("Google 로그인이 필요합니다.")
+        return try {
+            user.getIdToken(forceRefresh).await().token
+                ?: throw AuthenticationRequiredException("Google 인증이 만료되었습니다. 다시 로그인하세요.")
+        } catch (error: FirebaseAuthInvalidUserException) {
+            throw AuthenticationRequiredException("Google 인증이 만료되었습니다. 다시 로그인하세요.", error)
+        }
+    }
 
     suspend fun signOut() {
         firebaseAuth.signOut()
