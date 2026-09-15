@@ -83,4 +83,17 @@ class ExampleUnitTest {
         assertEquals("B3", marketDisplayName("KRW-B3"))
         assertEquals("BTC-USDT", marketDisplayName("BTC-USDT"))
     }
+
+    @Test
+    fun trackingCardsShowLiveTargetSearchOutsideAndAverageComparisonInside() {
+        val snapshot = DashboardSnapshot(
+            buyTracking = 31,
+            sellTracking = 47,
+            buyHooked = 2,
+            sellHooked = 5,
+        )
+
+        assertEquals(2 to 31, buyTrackingDisplay(snapshot))
+        assertEquals(5 to 47, sellTrackingDisplay(snapshot))
+    }
 }

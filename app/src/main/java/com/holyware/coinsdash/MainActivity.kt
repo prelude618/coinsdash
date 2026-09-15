@@ -199,9 +199,11 @@ private fun OverviewScreen(state: DashboardUiState) {
         }
         item { MoneyCard("총코인평가액", money?.coinValue ?: 0.0, Modifier.fillMaxWidth()) }
         item {
+            val buyCounts = buyTrackingDisplay(snapshot)
+            val sellCounts = sellTrackingDisplay(snapshot)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CountCard("매수 저점 추적", snapshot?.buyTracking ?: 0, Color(0xFF2E7D32), Modifier.weight(1f), snapshot?.buyHooked ?: 0)
-                CountCard("매도 고점 추적", snapshot?.sellTracking ?: 0, Color(0xFFC62828), Modifier.weight(1f), snapshot?.sellHooked ?: 0)
+                CountCard("매수 저점 추적", buyCounts.first, Color(0xFF2E7D32), Modifier.weight(1f), buyCounts.second)
+                CountCard("매도 고점 추적", sellCounts.first, Color(0xFFC62828), Modifier.weight(1f), sellCounts.second)
             }
         }
         item {
@@ -218,6 +220,12 @@ private fun OverviewScreen(state: DashboardUiState) {
         item { Spacer(Modifier.height(12.dp)) }
     }
 }
+
+internal fun buyTrackingDisplay(snapshot: DashboardSnapshot?): Pair<Int, Int> =
+    (snapshot?.buyHooked ?: 0) to (snapshot?.buyTracking ?: 0)
+
+internal fun sellTrackingDisplay(snapshot: DashboardSnapshot?): Pair<Int, Int> =
+    (snapshot?.sellHooked ?: 0) to (snapshot?.sellTracking ?: 0)
 
 internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_LOGIN, OUTAGE }
 
