@@ -1,5 +1,14 @@
 # Coinsdance 릴리스 노트
 
+## 1.0.6 (versionCode 7)
+
+- 거래내역의 마켓명에서 불필요한 `KRW-` 접두사를 제거하고 코인 심볼만 표시합니다.
+- 서버와 API에서는 정확한 마켓 식별을 위해 기존 `KRW-코인` 값을 그대로 유지하며 앱 표시만 간결하게 변경합니다.
+
+### Firebase App Distribution용
+
+거래내역에서 `KRW-B3`처럼 표시되던 마켓명을 `B3`처럼 코인 이름만 보이도록 간결하게 개선했습니다.
+
 ## 1.0.5 (versionCode 6)
 
 - Firebase Credential Manager 기반 Google 로그인을 추가합니다.

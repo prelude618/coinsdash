@@ -41,4 +41,10 @@ class ExampleUnitTest {
     fun signedOutIsNotReportedAsOutage() {
         assertEquals(BotPresentation.NEEDS_LOGIN, botPresentation(DashboardUiState()))
     }
+
+    @Test
+    fun krwPrefixIsHiddenFromTradeMarketName() {
+        assertEquals("B3", marketDisplayName("KRW-B3"))
+        assertEquals("BTC-USDT", marketDisplayName("BTC-USDT"))
+    }
 }

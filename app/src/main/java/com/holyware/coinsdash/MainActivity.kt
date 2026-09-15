@@ -314,7 +314,7 @@ private fun TradeList(trades: List<Trade>) {
             Card {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Row(Modifier.fillMaxWidth()) {
-                        Text(trade.market, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text(marketDisplayName(trade.market), Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         Text(if (trade.side == "buy") "매수" else "매도", color = if (trade.side == "buy") Color(0xFFC62828) else Color(0xFF1565C0), fontWeight = FontWeight.Bold)
                     }
                     Text("${won(trade.funds)} · ${number(trade.volume)}개 @ ${won(trade.price)}")
@@ -333,6 +333,8 @@ private fun TradeList(trades: List<Trade>) {
         item { Spacer(Modifier.height(12.dp)) }
     }
 }
+
+internal fun marketDisplayName(market: String): String = market.removePrefix("KRW-")
 
 @Composable
 private fun DelistingList(items: List<Delisting>) {
