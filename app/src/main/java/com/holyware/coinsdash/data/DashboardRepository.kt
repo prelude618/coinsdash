@@ -24,7 +24,14 @@ class DashboardRepository {
             sellHooked = json.optInt("sell_hooked"),
             minimumBuy = json.optDouble("minimum_buy"),
             registered = json.optJSONArray("registered").objects().map {
-                CoinStatus(it.getString("market"), it.optBoolean("buy_active"), it.optBoolean("held"))
+                CoinStatus(
+                    market = it.getString("market"),
+                    buyActive = it.optBoolean("buy_active"),
+                    held = it.optBoolean("held"),
+                    purchaseCost = it.optDouble("purchase_cost"),
+                    currentValue = it.optDouble("current_value"),
+                    changePercent = it.optDouble("change_percent"),
+                )
             },
             delistings = json.optJSONArray("delistings").objects().map {
                 Delisting(it.getString("market"), it.getString("reason"), it.getString("occurred_at"))

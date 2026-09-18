@@ -1,6 +1,7 @@
 package com.holyware.coinsdash
 
 import com.holyware.coinsdash.data.BotStatus
+import com.holyware.coinsdash.data.CoinStatus
 import com.holyware.coinsdash.data.DashboardSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -95,5 +96,40 @@ class ExampleUnitTest {
 
         assertEquals(2 to 31, buyTrackingDisplay(snapshot))
         assertEquals(5 to 47, sellTrackingDisplay(snapshot))
+    }
+
+    @Test
+    fun coinFiltersApplyEveryDisplayedField() {
+        val coins = listOf(
+            CoinStatus("KRW-AAVE", buyActive = true, held = true, purchaseCost = 300_000.0, currentValue = 240_000.0, changePercent = -20.0),
+            CoinStatus("KRW-BTC", buyActive = false, held = true, purchaseCost = 200_000.0, currentValue = 220_000.0, changePercent = 10.0),
+            CoinStatus("KRW-ETH", buyActive = true, held = false),
+        )
+
+        val filtered = filterAndSortCoins(
+            coins = coins,
+            query = "aav",
+            held = CoinBooleanFilter.YES,
+            buyActive = CoinBooleanFilter.YES,
+            change = CoinChangeFilter.LOSS,
+            minimumPurchaseCost = 250_000.0,
+            minimumCurrentValue = 200_000.0,
+        )
+
+        assertEquals(listOf("KRW-AAVE"), filtered.map { it.market })
+    }
+
+    @Test
+    fun everyCoinMetricCanBeSortedInEitherDirection() {
+        val coins = listOf(
+            CoinStatus("KRW-A", buyActive = false, held = true, purchaseCost = 100.0, currentValue = 80.0, changePercent = -20.0),
+            CoinStatus("KRW-B", buyActive = true, held = false, purchaseCost = 200.0, currentValue = 250.0, changePercent = 25.0),
+        )
+
+        CoinSortField.entries.forEach { field ->
+            val ascending = filterAndSortCoins(coins, sortField = field)
+            val descending = filterAndSortCoins(coins, sortField = field, descending = true)
+            assertEquals(ascending.map { it.market }.reversed(), descending.map { it.market })
+        }
     }
 }

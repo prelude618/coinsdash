@@ -18,6 +18,9 @@ data class CoinStatus(
     val market: String,
     val buyActive: Boolean,
     val held: Boolean,
+    val purchaseCost: Double = 0.0,
+    val currentValue: Double = 0.0,
+    val changePercent: Double = 0.0,
 )
 
 data class Delisting(

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,6 +26,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -303,27 +305,189 @@ private fun MinimumBuyCard(value: Double, modifier: Modifier) {
     }
 }
 
+internal enum class CoinBooleanFilter { ALL, YES, NO }
+internal enum class CoinChangeFilter { ALL, GAIN, LOSS }
+internal enum class CoinSortField { SYMBOL, HELD, BUY_ACTIVE, PURCHASE_COST, CURRENT_VALUE, CHANGE_PERCENT }
+
+internal fun filterAndSortCoins(
+    coins: List<CoinStatus>,
+    query: String = "",
+    held: CoinBooleanFilter = CoinBooleanFilter.ALL,
+    buyActive: CoinBooleanFilter = CoinBooleanFilter.ALL,
+    change: CoinChangeFilter = CoinChangeFilter.ALL,
+    minimumPurchaseCost: Double = 0.0,
+    minimumCurrentValue: Double = 0.0,
+    sortField: CoinSortField = CoinSortField.SYMBOL,
+    descending: Boolean = false,
+): List<CoinStatus> {
+    val filtered = coins.filter { coin ->
+        val symbol = marketDisplayName(coin.market)
+        symbol.contains(query.trim(), ignoreCase = true) &&
+            (held == CoinBooleanFilter.ALL || coin.held == (held == CoinBooleanFilter.YES)) &&
+            (buyActive == CoinBooleanFilter.ALL || coin.buyActive == (buyActive == CoinBooleanFilter.YES)) &&
+            (change == CoinChangeFilter.ALL || (change == CoinChangeFilter.GAIN && coin.changePercent >= 0) || (change == CoinChangeFilter.LOSS && coin.changePercent < 0)) &&
+            coin.purchaseCost >= minimumPurchaseCost && coin.currentValue >= minimumCurrentValue
+    }
+    val comparator = when (sortField) {
+        CoinSortField.SYMBOL -> compareBy<CoinStatus> { marketDisplayName(it.market).lowercase(Locale.US) }
+        CoinSortField.HELD -> compareBy<CoinStatus> { it.held }
+        CoinSortField.BUY_ACTIVE -> compareBy<CoinStatus> { it.buyActive }
+        CoinSortField.PURCHASE_COST -> compareBy<CoinStatus> { it.purchaseCost }
+        CoinSortField.CURRENT_VALUE -> compareBy<CoinStatus> { it.currentValue }
+        CoinSortField.CHANGE_PERCENT -> compareBy<CoinStatus> { it.changePercent }
+    }.thenBy { it.market }
+    return filtered.sortedWith(if (descending) comparator.reversed() else comparator)
+}
+
 @Composable
 private fun CoinsScreen(snapshot: DashboardSnapshot?) {
-    val coins = snapshot?.registered.orEmpty().sortedWith(compareByDescending<CoinStatus> { it.buyActive }.thenBy { it.market })
+    var query by remember { mutableStateOf("") }
+    var heldFilter by remember { mutableStateOf(CoinBooleanFilter.ALL) }
+    var buyFilter by remember { mutableStateOf(CoinBooleanFilter.ALL) }
+    var changeFilter by remember { mutableStateOf(CoinChangeFilter.ALL) }
+    var minimumCost by remember { mutableStateOf("") }
+    var minimumValue by remember { mutableStateOf("") }
+    var sortField by remember { mutableStateOf(CoinSortField.SYMBOL) }
+    var descending by remember { mutableStateOf(false) }
+    val coins = filterAndSortCoins(
+        coins = snapshot?.registered.orEmpty(),
+        query = query,
+        held = heldFilter,
+        buyActive = buyFilter,
+        change = changeFilter,
+        minimumPurchaseCost = minimumCost.toDoubleOrNull() ?: 0.0,
+        minimumCurrentValue = minimumValue.toDoubleOrNull() ?: 0.0,
+        sortField = sortField,
+        descending = descending,
+    )
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text("등록 코인", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
-        item { Text("초록색은 현재 신규 매수 대상입니다. 순위 밖 보유 종목도 매도 관리는 계속됩니다.", style = MaterialTheme.typography.bodySmall) }
+        item { Text("모든 금액과 등락률은 업비트 실잔고·공식 평단·현재가 기준입니다.", style = MaterialTheme.typography.bodySmall) }
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("코인 검색") },
+                placeholder = { Text("예: AAVE") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            Text("보유 여부", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CoinBooleanFilter.entries) { option ->
+                    FilterChip(
+                        selected = heldFilter == option,
+                        onClick = { heldFilter = option },
+                        label = { Text(when (option) { CoinBooleanFilter.ALL -> "전체"; CoinBooleanFilter.YES -> "보유"; CoinBooleanFilter.NO -> "미보유" }) },
+                    )
+                }
+            }
+        }
+        item {
+            Text("매수 대상 여부", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CoinBooleanFilter.entries) { option ->
+                    FilterChip(
+                        selected = buyFilter == option,
+                        onClick = { buyFilter = option },
+                        label = { Text(when (option) { CoinBooleanFilter.ALL -> "전체"; CoinBooleanFilter.YES -> "매수 대상"; CoinBooleanFilter.NO -> "비대상" }) },
+                    )
+                }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = minimumCost,
+                    onValueChange = { minimumCost = it.filter(Char::isDigit) },
+                    label = { Text("최소 매수원가") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = minimumValue,
+                    onValueChange = { minimumValue = it.filter(Char::isDigit) },
+                    label = { Text("최소 평가액") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
+            Text("등락률", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CoinChangeFilter.entries) { option ->
+                    FilterChip(
+                        selected = changeFilter == option,
+                        onClick = { changeFilter = option },
+                        label = { Text(when (option) { CoinChangeFilter.ALL -> "전체"; CoinChangeFilter.GAIN -> "보합·상승"; CoinChangeFilter.LOSS -> "하락" }) },
+                    )
+                }
+            }
+        }
+        item {
+            Text("정렬 · 선택한 항목을 다시 누르면 방향 전환", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CoinSortField.entries) { option ->
+                    val selected = sortField == option
+                    val label = when (option) {
+                        CoinSortField.SYMBOL -> "코인"
+                        CoinSortField.HELD -> "보유"
+                        CoinSortField.BUY_ACTIVE -> "매수대상"
+                        CoinSortField.PURCHASE_COST -> "매수원가"
+                        CoinSortField.CURRENT_VALUE -> "평가액"
+                        CoinSortField.CHANGE_PERCENT -> "등락률"
+                    }
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            if (selected) descending = !descending else {
+                                sortField = option
+                                descending = option != CoinSortField.SYMBOL
+                            }
+                        },
+                        label = { Text(label + if (selected) if (descending) " ↓" else " ↑" else "") },
+                    )
+                }
+            }
+            Text("${coins.size}개 표시", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         if (coins.isEmpty()) item { EmptyCard("등록 코인 데이터가 없습니다.") }
         items(coins, key = { it.market }) { coin ->
             Card(colors = CardDefaults.cardColors(containerColor = if (coin.buyActive) Color(0xFF1B5E20).copy(alpha = .12f) else MaterialTheme.colorScheme.surfaceVariant)) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(coin.market.removePrefix("KRW-"), fontWeight = FontWeight.Bold); Text(coin.market, style = MaterialTheme.typography.labelSmall) }
-                    Text(
-                        if (coin.held) "보유  " else "미보유  ",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (coin.held) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(if (coin.buyActive) "매수 대상" else "매도 관리", color = if (coin.buyActive) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(marketDisplayName(coin.market), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(if (coin.held) "보유" else "미보유", color = if (coin.held) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text(" · ")
+                        Text(if (coin.buyActive) "매수 대상" else "비대상", color = if (coin.buyActive) Color(0xFF16803A) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CoinMetric("총매수원가", won(coin.purchaseCost), Modifier.weight(1f))
+                        CoinMetric("현재평가액", won(coin.currentValue), Modifier.weight(1f))
+                        CoinMetric(
+                            "등락률",
+                            if (coin.held) String.format(Locale.US, "%+.2f%%", coin.changePercent) else "-",
+                            Modifier.weight(1f),
+                            when { coin.changePercent > 0 -> Color(0xFFC62828); coin.changePercent < 0 -> Color(0xFF1565C0); else -> MaterialTheme.colorScheme.onSurfaceVariant },
+                        )
+                    }
                 }
             }
         }
         item { Spacer(Modifier.height(12.dp)) }
+    }
+}
+
+@Composable
+private fun CoinMetric(label: String, value: String, modifier: Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = color, fontWeight = FontWeight.Bold)
     }
 }
 
