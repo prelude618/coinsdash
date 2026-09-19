@@ -49,6 +49,13 @@ internal enum class BooleanColumnFilter { ALL, YES, NO }
 internal enum class CoinSortField { PURCHASE_COST, CURRENT_VALUE, CHANGE_PERCENT }
 internal enum class SortDirection { ASCENDING, DESCENDING }
 internal data class CoinSort(val field: CoinSortField, val direction: SortDirection)
+internal data class CoinListUiState(
+    val heldFilter: BooleanColumnFilter = BooleanColumnFilter.YES,
+    val buyActiveFilter: BooleanColumnFilter = BooleanColumnFilter.ALL,
+    val sorts: List<CoinSort> = listOf(
+        CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING),
+    ),
+)
 
 internal fun toggleCoinSort(sorts: List<CoinSort>, field: CoinSortField): List<CoinSort> {
     val index = sorts.indexOfFirst { it.field == field }
@@ -95,13 +102,17 @@ private val scrollingTableWidth = moneyWidth + moneyWidth + changeWidth + heldWi
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun CoinsScreen(snapshot: DashboardSnapshot?) {
-    var heldFilter by remember { mutableStateOf(BooleanColumnFilter.YES) }
-    var buyActiveFilter by remember { mutableStateOf(BooleanColumnFilter.ALL) }
-    var sorts by remember {
-        mutableStateOf(listOf(CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING)))
-    }
-    val coins = filterAndSortCoins(snapshot?.registered.orEmpty(), heldFilter, buyActiveFilter, sorts)
+internal fun CoinsScreen(
+    snapshot: DashboardSnapshot?,
+    state: CoinListUiState,
+    onStateChange: (CoinListUiState) -> Unit,
+) {
+    val coins = filterAndSortCoins(
+        snapshot?.registered.orEmpty(),
+        state.heldFilter,
+        state.buyActiveFilter,
+        state.sorts,
+    )
     val horizontalScroll = rememberScrollState()
 
     Column(Modifier.fillMaxSize()) {
@@ -116,13 +127,13 @@ internal fun CoinsScreen(snapshot: DashboardSnapshot?) {
         LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             stickyHeader {
                 CoinTableHeader(
-                    heldFilter = heldFilter,
-                    buyActiveFilter = buyActiveFilter,
-                    sorts = sorts,
+                    heldFilter = state.heldFilter,
+                    buyActiveFilter = state.buyActiveFilter,
+                    sorts = state.sorts,
                     horizontalScroll = horizontalScroll,
-                    onHeldFilter = { heldFilter = it },
-                    onBuyActiveFilter = { buyActiveFilter = it },
-                    onSort = { sorts = toggleCoinSort(sorts, it) },
+                    onHeldFilter = { onStateChange(state.copy(heldFilter = it)) },
+                    onBuyActiveFilter = { onStateChange(state.copy(buyActiveFilter = it)) },
+                    onSort = { onStateChange(state.copy(sorts = toggleCoinSort(state.sorts, it))) },
                 )
             }
             itemsIndexed(coins, key = { _, coin -> coin.market }) { index, coin ->
@@ -279,5 +290,7 @@ private fun TableText(
 @Preview(showBackground = true, widthDp = 390, heightDp = 760)
 @Composable
 private fun CoinsScreenPreview() {
-    CoinSDashTheme(dynamicColor = false) { CoinsScreen(PreviewData.snapshot) }
+    CoinSDashTheme(dynamicColor = false) {
+        CoinsScreen(PreviewData.snapshot, CoinListUiState()) {}
+    }
 }

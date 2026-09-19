@@ -6,6 +6,7 @@ import com.holyware.coinsdash.data.DashboardSnapshot
 import com.holyware.coinsdash.ui.components.marketDisplayName
 import com.holyware.coinsdash.ui.screens.BooleanColumnFilter
 import com.holyware.coinsdash.ui.screens.BotPresentation
+import com.holyware.coinsdash.ui.screens.CoinListUiState
 import com.holyware.coinsdash.ui.screens.CoinSort
 import com.holyware.coinsdash.ui.screens.CoinSortField
 import com.holyware.coinsdash.ui.screens.SortDirection
@@ -124,6 +125,18 @@ class ExampleUnitTest {
         )
 
         assertEquals(listOf("KRW-AAVE"), filtered.map { it.market })
+    }
+
+    @Test
+    fun coinListSessionDefaultsToHeldCoinsByPurchaseCostDescending() {
+        val state = CoinListUiState()
+
+        assertEquals(BooleanColumnFilter.YES, state.heldFilter)
+        assertEquals(BooleanColumnFilter.ALL, state.buyActiveFilter)
+        assertEquals(
+            listOf(CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING)),
+            state.sorts,
+        )
     }
 
     @Test

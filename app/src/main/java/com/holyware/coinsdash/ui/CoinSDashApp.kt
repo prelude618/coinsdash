@@ -15,17 +15,23 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.holyware.coinsdash.AuthStatus
 import com.holyware.coinsdash.DashboardViewModel
 import com.holyware.coinsdash.ui.screens.AuthenticationLoadingScreen
+import com.holyware.coinsdash.ui.screens.CoinListUiState
 import com.holyware.coinsdash.ui.screens.CoinsScreen
 import com.holyware.coinsdash.ui.screens.HistoryScreen
 import com.holyware.coinsdash.ui.screens.LoginScreen
@@ -52,6 +58,17 @@ fun CoinSDashApp(viewModel: DashboardViewModel) {
         AuthStatus.AUTHENTICATED -> Unit
     }
     var selected by remember { mutableIntStateOf(0) }
+    var coinListState by remember { mutableStateOf(CoinListUiState()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                coinListState = CoinListUiState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -85,7 +102,7 @@ fun CoinSDashApp(viewModel: DashboardViewModel) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (Screen.entries[selected]) {
                 Screen.Overview -> OverviewScreen(state)
-                Screen.Coins -> CoinsScreen(state.snapshot)
+                Screen.Coins -> CoinsScreen(state.snapshot, coinListState) { coinListState = it }
                 Screen.History -> HistoryScreen(state.snapshot)
                 Screen.Settings -> SettingsScreen(state, viewModel::signOut, viewModel::updateKeys)
             }
