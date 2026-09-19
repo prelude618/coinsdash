@@ -96,9 +96,11 @@ private val scrollingTableWidth = moneyWidth + moneyWidth + changeWidth + heldWi
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun CoinsScreen(snapshot: DashboardSnapshot?) {
-    var heldFilter by remember { mutableStateOf(BooleanColumnFilter.ALL) }
+    var heldFilter by remember { mutableStateOf(BooleanColumnFilter.YES) }
     var buyActiveFilter by remember { mutableStateOf(BooleanColumnFilter.ALL) }
-    var sorts by remember { mutableStateOf(emptyList<CoinSort>()) }
+    var sorts by remember {
+        mutableStateOf(listOf(CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING)))
+    }
     val coins = filterAndSortCoins(snapshot?.registered.orEmpty(), heldFilter, buyActiveFilter, sorts)
     val horizontalScroll = rememberScrollState()
 
