@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,6 +89,8 @@ private val heldWidth = 82.dp
 private val buyActiveWidth = 88.dp
 private val moneyWidth = 112.dp
 private val changeWidth = 82.dp
+private val cellStartPadding = 6.dp
+private val cellEndPadding = 12.dp
 private val scrollingTableWidth = moneyWidth + moneyWidth + changeWidth + heldWidth + buyActiveWidth
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -155,7 +158,12 @@ private fun CoinTableHeader(
 
 @Composable
 private fun HeaderLabel(label: String, width: Dp) {
-    Text(label, Modifier.width(width).padding(horizontal = 6.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+    Text(
+        label,
+        Modifier.width(width).padding(start = cellStartPadding, end = cellEndPadding),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+    )
 }
 
 @Composable
@@ -200,8 +208,19 @@ private fun SortHeader(
 ) {
     val index = sorts.indexOfFirst { it.field == field }
     val suffix = if (index < 0) " ↕" else " ${index + 1}${if (sorts[index].direction == SortDirection.ASCENDING) "↑" else "↓"}"
-    TextButton(onClick = { onSort(field) }, modifier = Modifier.width(width)) {
-        Text("$label$suffix", textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+    TextButton(
+        onClick = { onSort(field) },
+        modifier = Modifier.width(width),
+        contentPadding = PaddingValues(start = cellStartPadding, end = cellEndPadding),
+    ) {
+        Text(
+            "$label$suffix",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -246,7 +265,7 @@ private fun TableText(
 ) {
     Text(
         text = text,
-        modifier = Modifier.width(width).padding(horizontal = 6.dp),
+        modifier = Modifier.width(width).padding(start = cellStartPadding, end = cellEndPadding),
         textAlign = align,
         style = MaterialTheme.typography.bodySmall,
         fontWeight = weight,
