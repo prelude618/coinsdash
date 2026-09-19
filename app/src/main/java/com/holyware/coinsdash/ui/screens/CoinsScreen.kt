@@ -1,13 +1,13 @@
 package com.holyware.coinsdash.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -88,7 +88,7 @@ private val heldWidth = 82.dp
 private val buyActiveWidth = 88.dp
 private val moneyWidth = 112.dp
 private val changeWidth = 82.dp
-private val tableWidth = coinWidth + heldWidth + buyActiveWidth + moneyWidth + moneyWidth + changeWidth
+private val scrollingTableWidth = moneyWidth + moneyWidth + changeWidth + heldWidth + buyActiveWidth
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -108,21 +108,20 @@ internal fun CoinsScreen(snapshot: DashboardSnapshot?) {
             Text("등록 코인", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("${coins.size}개", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Box(Modifier.fillMaxWidth().weight(1f).horizontalScroll(horizontalScroll)) {
-            LazyColumn(Modifier.width(tableWidth).fillMaxHeight()) {
-                stickyHeader {
-                    CoinTableHeader(
-                        heldFilter = heldFilter,
-                        buyActiveFilter = buyActiveFilter,
-                        sorts = sorts,
-                        onHeldFilter = { heldFilter = it },
-                        onBuyActiveFilter = { buyActiveFilter = it },
-                        onSort = { sorts = toggleCoinSort(sorts, it) },
-                    )
-                }
-                itemsIndexed(coins, key = { _, coin -> coin.market }) { index, coin ->
-                    CoinTableRow(coin, index % 2 == 1)
-                }
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            stickyHeader {
+                CoinTableHeader(
+                    heldFilter = heldFilter,
+                    buyActiveFilter = buyActiveFilter,
+                    sorts = sorts,
+                    horizontalScroll = horizontalScroll,
+                    onHeldFilter = { heldFilter = it },
+                    onBuyActiveFilter = { buyActiveFilter = it },
+                    onSort = { sorts = toggleCoinSort(sorts, it) },
+                )
+            }
+            itemsIndexed(coins, key = { _, coin -> coin.market }) { index, coin ->
+                CoinTableRow(coin, index % 2 == 1, horizontalScroll)
             }
         }
     }
@@ -133,18 +132,23 @@ private fun CoinTableHeader(
     heldFilter: BooleanColumnFilter,
     buyActiveFilter: BooleanColumnFilter,
     sorts: List<CoinSort>,
+    horizontalScroll: ScrollState,
     onHeldFilter: (BooleanColumnFilter) -> Unit,
     onBuyActiveFilter: (BooleanColumnFilter) -> Unit,
     onSort: (CoinSortField) -> Unit,
 ) {
     Surface(shadowElevation = 3.dp, color = MaterialTheme.colorScheme.surfaceVariant) {
-        Row(Modifier.width(tableWidth).heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
             HeaderLabel("코인명", coinWidth)
-            FilterHeader("보유유무", heldWidth, heldFilter, onHeldFilter)
-            FilterHeader("매수대상", buyActiveWidth, buyActiveFilter, onBuyActiveFilter)
-            SortHeader("총매수원가", moneyWidth, CoinSortField.PURCHASE_COST, sorts, onSort)
-            SortHeader("현재평가액", moneyWidth, CoinSortField.CURRENT_VALUE, sorts, onSort)
-            SortHeader("등락률", changeWidth, CoinSortField.CHANGE_PERCENT, sorts, onSort)
+            Box(Modifier.weight(1f).horizontalScroll(horizontalScroll)) {
+                Row(Modifier.width(scrollingTableWidth), verticalAlignment = Alignment.CenterVertically) {
+                    SortHeader("총매수원가", moneyWidth, CoinSortField.PURCHASE_COST, sorts, onSort)
+                    SortHeader("현재평가액", moneyWidth, CoinSortField.CURRENT_VALUE, sorts, onSort)
+                    SortHeader("등락률", changeWidth, CoinSortField.CHANGE_PERCENT, sorts, onSort)
+                    FilterHeader("보유유무", heldWidth, heldFilter, onHeldFilter)
+                    FilterHeader("매수대상", buyActiveWidth, buyActiveFilter, onBuyActiveFilter)
+                }
+            }
         }
     }
 }
@@ -202,24 +206,32 @@ private fun SortHeader(
 }
 
 @Composable
-private fun CoinTableRow(coin: CoinStatus, alternate: Boolean) {
+private fun CoinTableRow(
+    coin: CoinStatus,
+    alternate: Boolean,
+    horizontalScroll: ScrollState,
+) {
     val background = if (alternate) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f) else MaterialTheme.colorScheme.surface
     Row(
-        Modifier.width(tableWidth).background(background).heightIn(min = 48.dp),
+        Modifier.fillMaxWidth().background(background).heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TableText(marketDisplayName(coin.market), coinWidth, TextAlign.Start, FontWeight.Bold)
-        TableText(if (coin.held) "보유" else "미보유", heldWidth, TextAlign.Center, if (coin.held) FontWeight.Bold else FontWeight.Normal)
-        TableText(if (coin.buyActive) "유" else "무", buyActiveWidth, TextAlign.Center, if (coin.buyActive) FontWeight.Bold else FontWeight.Normal)
-        TableText(won(coin.purchaseCost), moneyWidth, TextAlign.End)
-        TableText(won(coin.currentValue), moneyWidth, TextAlign.End)
-        TableText(
-            if (coin.held) String.format(Locale.US, "%+.2f%%", coin.changePercent) else "-",
-            changeWidth,
-            TextAlign.End,
-            FontWeight.Bold,
-            when { coin.changePercent > 0 -> Color(0xFFC62828); coin.changePercent < 0 -> Color(0xFF1565C0); else -> MaterialTheme.colorScheme.onSurfaceVariant },
-        )
+        Box(Modifier.weight(1f).horizontalScroll(horizontalScroll)) {
+            Row(Modifier.width(scrollingTableWidth), verticalAlignment = Alignment.CenterVertically) {
+                TableText(won(coin.purchaseCost), moneyWidth, TextAlign.End)
+                TableText(won(coin.currentValue), moneyWidth, TextAlign.End)
+                TableText(
+                    if (coin.held) String.format(Locale.US, "%+.2f%%", coin.changePercent) else "-",
+                    changeWidth,
+                    TextAlign.End,
+                    FontWeight.Bold,
+                    when { coin.changePercent > 0 -> Color(0xFFC62828); coin.changePercent < 0 -> Color(0xFF1565C0); else -> MaterialTheme.colorScheme.onSurfaceVariant },
+                )
+                TableText(if (coin.held) "보유" else "미보유", heldWidth, TextAlign.Center, if (coin.held) FontWeight.Bold else FontWeight.Normal)
+                TableText(if (coin.buyActive) "유" else "무", buyActiveWidth, TextAlign.Center, if (coin.buyActive) FontWeight.Bold else FontWeight.Normal)
+            }
+        }
     }
     HorizontalDivider()
 }
