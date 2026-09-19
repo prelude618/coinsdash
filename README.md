@@ -2,7 +2,7 @@
 
 Coinsdance는 AWS Lightsail에서 실행 중인 CoinSDance 자동매매 봇의 상태를 Android에서 확인하기 위한 대시보드 앱입니다.
 
-현재 개발 버전은 **1.0.11 (versionCode 12)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다. 별도 요청이 없으면 모든 신규 배포에서 `versionName`과 `versionCode`를 함께 올립니다.
+현재 배포 버전은 **1.0.12 (versionCode 13)**이며, 배포별 변경사항은 [RELEASE_NOTES.md](RELEASE_NOTES.md)에 기록합니다. 별도 요청이 없으면 모든 신규 배포에서 `versionName`과 `versionCode`를 함께 올립니다.
 
 ## 현재 상태
 
