@@ -3,6 +3,17 @@ package com.holyware.coinsdash
 import com.holyware.coinsdash.data.BotStatus
 import com.holyware.coinsdash.data.CoinStatus
 import com.holyware.coinsdash.data.DashboardSnapshot
+import com.holyware.coinsdash.ui.components.marketDisplayName
+import com.holyware.coinsdash.ui.screens.BooleanColumnFilter
+import com.holyware.coinsdash.ui.screens.BotPresentation
+import com.holyware.coinsdash.ui.screens.CoinSort
+import com.holyware.coinsdash.ui.screens.CoinSortField
+import com.holyware.coinsdash.ui.screens.SortDirection
+import com.holyware.coinsdash.ui.screens.botPresentation
+import com.holyware.coinsdash.ui.screens.buyTrackingDisplay
+import com.holyware.coinsdash.ui.screens.filterAndSortCoins
+import com.holyware.coinsdash.ui.screens.sellTrackingDisplay
+import com.holyware.coinsdash.ui.screens.toggleCoinSort
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -99,7 +110,7 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun coinFiltersApplyEveryDisplayedField() {
+    fun coinTableFiltersHoldingAndBuyTargetIndependently() {
         val coins = listOf(
             CoinStatus("KRW-AAVE", buyActive = true, held = true, purchaseCost = 300_000.0, currentValue = 240_000.0, changePercent = -20.0),
             CoinStatus("KRW-BTC", buyActive = false, held = true, purchaseCost = 200_000.0, currentValue = 220_000.0, changePercent = 10.0),
@@ -108,28 +119,41 @@ class ExampleUnitTest {
 
         val filtered = filterAndSortCoins(
             coins = coins,
-            query = "aav",
-            held = CoinBooleanFilter.YES,
-            buyActive = CoinBooleanFilter.YES,
-            change = CoinChangeFilter.LOSS,
-            minimumPurchaseCost = 250_000.0,
-            minimumCurrentValue = 200_000.0,
+            held = BooleanColumnFilter.YES,
+            buyActive = BooleanColumnFilter.YES,
         )
 
         assertEquals(listOf("KRW-AAVE"), filtered.map { it.market })
     }
 
     @Test
-    fun everyCoinMetricCanBeSortedInEitherDirection() {
+    fun numericColumnsSupportOrderedMultiColumnSorting() {
         val coins = listOf(
-            CoinStatus("KRW-A", buyActive = false, held = true, purchaseCost = 100.0, currentValue = 80.0, changePercent = -20.0),
-            CoinStatus("KRW-B", buyActive = true, held = false, purchaseCost = 200.0, currentValue = 250.0, changePercent = 25.0),
+            CoinStatus("KRW-A", false, true, 100.0, 80.0, -20.0),
+            CoinStatus("KRW-B", true, false, 200.0, 250.0, 25.0),
+            CoinStatus("KRW-C", true, true, 200.0, 300.0, 10.0),
         )
 
-        CoinSortField.entries.forEach { field ->
-            val ascending = filterAndSortCoins(coins, sortField = field)
-            val descending = filterAndSortCoins(coins, sortField = field, descending = true)
-            assertEquals(ascending.map { it.market }.reversed(), descending.map { it.market })
-        }
+        val sorted = filterAndSortCoins(
+            coins,
+            sorts = listOf(
+                CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING),
+                CoinSort(CoinSortField.CURRENT_VALUE, SortDirection.ASCENDING),
+            ),
+        )
+
+        assertEquals(listOf("KRW-B", "KRW-C", "KRW-A"), sorted.map { it.market })
+    }
+
+    @Test
+    fun sortHeaderCyclesDescendingAscendingAndOffWithoutRemovingOtherSorts() {
+        val first = toggleCoinSort(emptyList(), CoinSortField.PURCHASE_COST)
+        val withSecond = toggleCoinSort(first, CoinSortField.CURRENT_VALUE)
+        val ascendingFirst = toggleCoinSort(withSecond, CoinSortField.PURCHASE_COST)
+        val removedFirst = toggleCoinSort(ascendingFirst, CoinSortField.PURCHASE_COST)
+
+        assertEquals(listOf(CoinSortField.PURCHASE_COST, CoinSortField.CURRENT_VALUE), withSecond.map { it.field })
+        assertEquals(SortDirection.ASCENDING, ascendingFirst.first().direction)
+        assertEquals(listOf(CoinSortField.CURRENT_VALUE), removedFirst.map { it.field })
     }
 }
