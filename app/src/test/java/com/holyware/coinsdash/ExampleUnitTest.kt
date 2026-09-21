@@ -196,15 +196,15 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun coinSearchSuggestionsArePrefixMatchedAndBounded() {
+    fun coinSearchSuggestionsReturnEveryPrefixMatchForLazyScrolling() {
         val coins = (0..20).map {
             CoinStatus("KRW-A${it.toString().padStart(2, '0')}", buyActive = false, held = false)
         } + CoinStatus("KRW-XA", buyActive = false, held = false)
 
         val result = coinSearchSuggestions(coins, "a")
 
-        assertEquals(8, result.size)
-        assertEquals((0..7).map { "KRW-A${it.toString().padStart(2, '0')}" }, result.map { it.market })
+        assertEquals(21, result.size)
+        assertEquals((0..20).map { "KRW-A${it.toString().padStart(2, '0')}" }, result.map { it.market })
     }
 
     @Test

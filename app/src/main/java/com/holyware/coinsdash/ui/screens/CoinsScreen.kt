@@ -97,15 +97,12 @@ internal fun filterAndSortCoins(
     }
 }
 
-private const val MAX_SEARCH_SUGGESTIONS = 8
-
 internal fun coinSearchSuggestions(coins: List<CoinStatus>, searchQuery: String): List<CoinStatus> {
     val query = searchQuery.trim()
     if (query.isEmpty()) return emptyList()
     return coins.asSequence()
         .filter { marketDisplayName(it.market).startsWith(query, ignoreCase = true) }
         .sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
-        .take(MAX_SEARCH_SUGGESTIONS)
         .toList()
 }
 
