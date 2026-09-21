@@ -18,11 +18,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal enum class AuthStatus { CHECKING, AUTHENTICATED, SIGNED_OUT }
+internal enum class AuthStatus { CHECKING, USERNAME_REQUIRED, AUTHENTICATED, SIGNED_OUT }
 
 internal data class AuthUiState(
     val status: AuthStatus = AuthStatus.CHECKING,
     val email: String? = null,
+    val username: String? = null,
     val error: String? = null,
 )
 
@@ -74,13 +75,48 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun initializeAuthentication() {
         val email = authManager.currentEmail
-        mutableState.value = DashboardUiState(
-            auth = if (email == null) {
-                AuthUiState(status = AuthStatus.SIGNED_OUT)
-            } else {
-                AuthUiState(status = AuthStatus.AUTHENTICATED, email = email)
-            },
-        )
+        if (email == null) {
+            mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.SIGNED_OUT))
+            return
+        }
+        loadProfile(email)
+    }
+
+    private fun loadProfile(email: String) {
+        mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.CHECKING, email = email))
+        viewModelScope.launch {
+            runCatching {
+                val token = authManager.idToken()
+                withContext(Dispatchers.IO) { repository.fetchProfile(token) }
+            }.onSuccess { profile ->
+                mutableState.value = DashboardUiState(
+                    auth = AuthUiState(
+                        status = if (profile.requiresUsername) AuthStatus.USERNAME_REQUIRED else AuthStatus.AUTHENTICATED,
+                        email = profile.email.ifBlank { email },
+                        username = profile.username.ifBlank { null },
+                    ),
+                )
+                if (!profile.requiresUsername) refresh()
+            }.onFailure { error ->
+                if (error is AuthenticationRequiredException) {
+                    handleAuthenticationFailure(error.message)
+                } else {
+                    mutableState.value = DashboardUiState(
+                        auth = AuthUiState(
+                            status = AuthStatus.CHECKING,
+                            email = email,
+                            error = error.message ?: "사용자 정보를 확인하지 못했습니다.",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun retryProfile() {
+        authManager.currentEmail?.let(::loadProfile) ?: run {
+            mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.SIGNED_OUT))
+        }
     }
 
     fun refresh() {
@@ -144,10 +180,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             runCatching { GoogleAuthManager(context).signIn() }
                 .onSuccess { email ->
-                    mutableState.value = DashboardUiState(
-                        auth = AuthUiState(status = AuthStatus.AUTHENTICATED, email = email),
-                    )
-                    refresh()
+                    loadProfile(email)
                 }
                 .onFailure { error ->
                     mutableState.value = DashboardUiState(
@@ -172,6 +205,21 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun updateKeys(accessKey: String, secretKey: String): Result<Unit> = runCatching {
         val token = authManager.idToken()
         withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
+        refresh()
+    }.onFailure { error ->
+        if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
+    }
+
+    suspend fun setUsername(username: String): Result<Unit> = runCatching {
+        val token = authManager.idToken()
+        val profile = withContext(Dispatchers.IO) { repository.setUsername(token, username) }
+        mutableState.value = DashboardUiState(
+            auth = AuthUiState(
+                status = AuthStatus.AUTHENTICATED,
+                email = profile.email.ifBlank { authManager.currentEmail },
+                username = profile.username,
+            ),
+        )
         refresh()
     }.onFailure { error ->
         if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)

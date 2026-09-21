@@ -61,6 +61,7 @@ internal fun OverviewScreen(state: DashboardUiState) {
     val snapshot = state.snapshot
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Spacer(Modifier.height(4.dp)) }
+        item { Text("아이디: ${state.auth.username.orEmpty()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         item { BotCard(state) }
         val money = snapshot?.money
         item {

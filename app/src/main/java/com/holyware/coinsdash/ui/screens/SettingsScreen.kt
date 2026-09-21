@@ -39,6 +39,7 @@ internal fun SettingsScreen(
     var showKeys by remember { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("Google 계정", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item { Text("아이디: ${state.auth.username.orEmpty()}", fontWeight = FontWeight.Bold) }
         item { Text(state.auth.email.orEmpty(), fontWeight = FontWeight.Bold) }
         item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") } }
         item { HorizontalDivider() }

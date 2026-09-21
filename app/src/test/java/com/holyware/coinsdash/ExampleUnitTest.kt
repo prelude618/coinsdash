@@ -15,11 +15,21 @@ import com.holyware.coinsdash.ui.screens.buyTrackingDisplay
 import com.holyware.coinsdash.ui.screens.filterAndSortCoins
 import com.holyware.coinsdash.ui.screens.sellTrackingDisplay
 import com.holyware.coinsdash.ui.screens.toggleCoinSort
+import com.holyware.coinsdash.ui.screens.validUsernameInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ExampleUnitTest {
     private val email = "prelude618@gmail.com"
+
+    @Test
+    fun usernameValidationMatchesSignupRules() {
+        assertEquals(true, validUsernameInput("prelude_618"))
+        assertEquals(true, validUsernameInput("코인댄스"))
+        assertEquals(false, validUsernameInput("ab"))
+        assertEquals(false, validUsernameInput("contains space"))
+        assertEquals(false, validUsernameInput("bad!"))
+    }
 
     @Test
     fun botStatusRemainsCheckingDuringRetries() {

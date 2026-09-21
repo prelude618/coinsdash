@@ -38,7 +38,7 @@ internal object PreviewData {
     )
     val state = DashboardUiState(
         snapshot = snapshot,
-        auth = AuthUiState(AuthStatus.AUTHENTICATED, "preview@coinsdance.app"),
+        auth = AuthUiState(AuthStatus.AUTHENTICATED, "preview@coinsdance.app", "preview-user"),
         connection = ConnectionUiState(ConnectionStatus.CONNECTED),
     )
 }

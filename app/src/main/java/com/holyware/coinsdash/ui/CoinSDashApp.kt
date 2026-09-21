@@ -33,6 +33,7 @@ import com.holyware.coinsdash.ui.screens.HistoryScreen
 import com.holyware.coinsdash.ui.screens.LoginScreen
 import com.holyware.coinsdash.ui.screens.OverviewScreen
 import com.holyware.coinsdash.ui.screens.SettingsScreen
+import com.holyware.coinsdash.ui.screens.UsernameSetupScreen
 
 private enum class Screen(val label: String, val symbol: String) {
     Overview("현황", "●"), Coins("코인", "◆"), History("거래", "↕"), Settings("설정", "⚙")
@@ -44,11 +45,15 @@ fun CoinSDashApp(viewModel: DashboardViewModel) {
     val state by viewModel.state.collectAsState()
     when (state.auth.status) {
         AuthStatus.CHECKING -> {
-            AuthenticationLoadingScreen()
+            AuthenticationLoadingScreen(state.auth.error, viewModel::retryProfile, viewModel::signOut)
             return
         }
         AuthStatus.SIGNED_OUT -> {
             LoginScreen(state, viewModel::signIn)
+            return
+        }
+        AuthStatus.USERNAME_REQUIRED -> {
+            UsernameSetupScreen(state.auth.email.orEmpty(), viewModel::setUsername)
             return
         }
         AuthStatus.AUTHENTICATED -> Unit

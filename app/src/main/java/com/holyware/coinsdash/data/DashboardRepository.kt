@@ -7,6 +7,20 @@ import java.net.URL
 import java.time.Instant
 
 class DashboardRepository {
+    data class UserProfile(val email: String, val username: String, val requiresUsername: Boolean)
+
+    fun fetchProfile(idToken: String): UserProfile = request(idToken, "GET", "/api/v1/profile").toUserProfile()
+
+    fun setUsername(idToken: String, username: String): UserProfile {
+        require(username.isNotBlank()) { "아이디를 입력하세요." }
+        return request(
+            idToken,
+            "PUT",
+            "/api/v1/profile/username",
+            JSONObject().put("username", username.trim()).toString(),
+        ).toUserProfile()
+    }
+
     fun fetchDashboard(idToken: String): DashboardSnapshot {
         val json = request(idToken, "GET", "/api/v1/dashboard")
         val bot = json.getJSONObject("bot")
@@ -74,9 +88,13 @@ class DashboardRepository {
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val errorCode = runCatching { JSONObject(text).optString("error") }.getOrDefault("")
             if (code == 401 || code == 403) {
                 throw AuthenticationRequiredException("Google 인증을 다시 확인해야 합니다. 로그인해 주세요.")
             }
+            if (code == 409 && errorCode == "username_taken") throw UsernameTakenException()
+            if (code == 409 && errorCode == "username_already_set") throw UsernameAlreadySetException()
+            if (code == 400 && errorCode == "invalid_username") throw UsernameInvalidException()
             if (code !in 200..299) error("서버 오류 $code: ${text.take(300)}")
             if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {
@@ -88,6 +106,12 @@ class DashboardRepository {
         const val SERVER_URL = "https://3.39.151.27.nip.io"
     }
 }
+
+private fun JSONObject.toUserProfile() = DashboardRepository.UserProfile(
+    email = optString("email"),
+    username = optString("username"),
+    requiresUsername = optBoolean("requires_username", optString("username").isBlank()),
+)
 
 private fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
 private fun JSONObject.nullableString(name: String): String? = if (isNull(name)) null else optString(name).takeIf { it.isNotBlank() }
