@@ -21,6 +21,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,6 +56,7 @@ internal data class CoinListUiState(
     val sorts: List<CoinSort> = listOf(
         CoinSort(CoinSortField.PURCHASE_COST, SortDirection.DESCENDING),
     ),
+    val searchQuery: String = "",
 )
 
 internal fun toggleCoinSort(sorts: List<CoinSort>, field: CoinSortField): List<CoinSort> {
@@ -72,12 +74,15 @@ internal fun filterAndSortCoins(
     held: BooleanColumnFilter = BooleanColumnFilter.ALL,
     buyActive: BooleanColumnFilter = BooleanColumnFilter.ALL,
     sorts: List<CoinSort> = emptyList(),
+    searchQuery: String = "",
 ): List<CoinStatus> {
+    val normalizedQuery = searchQuery.trim()
     val filtered = coins.filter { coin ->
         (held == BooleanColumnFilter.ALL || coin.held == (held == BooleanColumnFilter.YES)) &&
-            (buyActive == BooleanColumnFilter.ALL || coin.buyActive == (buyActive == BooleanColumnFilter.YES))
+            (buyActive == BooleanColumnFilter.ALL || coin.buyActive == (buyActive == BooleanColumnFilter.YES)) &&
+            (normalizedQuery.isEmpty() || marketDisplayName(coin.market).contains(normalizedQuery, ignoreCase = true))
     }
-    if (sorts.isEmpty()) return filtered
+    if (sorts.isEmpty()) return filtered.sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
     return filtered.sortedWith { left, right ->
         for (sort in sorts) {
             val result = when (sort.field) {
@@ -112,7 +117,18 @@ internal fun CoinsScreen(
         state.heldFilter,
         state.buyActiveFilter,
         state.sorts,
+        state.searchQuery,
     )
+    val searchSuggestions = remember(snapshot?.registered, state.searchQuery) {
+        val query = state.searchQuery.trim()
+        if (query.isEmpty()) {
+            emptyList()
+        } else {
+            snapshot?.registered.orEmpty()
+                .filter { marketDisplayName(it.market).contains(query, ignoreCase = true) }
+                .sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
+        }
+    }
     val horizontalScroll = rememberScrollState()
 
     Column(Modifier.fillMaxSize()) {
@@ -124,6 +140,12 @@ internal fun CoinsScreen(
             Text("등록 코인", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("${coins.size}개", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        CoinSearchField(
+            query = state.searchQuery,
+            suggestions = searchSuggestions,
+            onQueryChange = { onStateChange(state.copy(searchQuery = it)) },
+            onCoinSelected = { onStateChange(state.copy(searchQuery = marketDisplayName(it.market))) },
+        )
         LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             stickyHeader {
                 CoinTableHeader(
@@ -138,6 +160,42 @@ internal fun CoinsScreen(
             }
             itemsIndexed(coins, key = { _, coin -> coin.market }) { index, coin ->
                 CoinTableRow(coin, index % 2 == 1, horizontalScroll)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoinSearchField(
+    query: String,
+    suggestions: List<CoinStatus>,
+    onQueryChange: (String) -> Unit,
+    onCoinSelected: (CoinStatus) -> Unit,
+) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("코인명 검색") },
+            placeholder = { Text("예: BTC") },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    TextButton(onClick = { onQueryChange("") }) { Text("지우기") }
+                }
+            },
+        )
+        DropdownMenu(
+            expanded = query.isNotBlank() && suggestions.isNotEmpty(),
+            onDismissRequest = {},
+            modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
+        ) {
+            suggestions.forEach { coin ->
+                DropdownMenuItem(
+                    text = { Text(marketDisplayName(coin.market), fontWeight = FontWeight.Bold) },
+                    onClick = { onCoinSelected(coin) },
+                )
             }
         }
     }

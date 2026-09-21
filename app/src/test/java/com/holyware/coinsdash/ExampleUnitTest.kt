@@ -159,6 +159,32 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun coinsAreAlphabeticalWhenNoNumericSortIsSelected() {
+        val coins = listOf(
+            CoinStatus("KRW-XRP", buyActive = false, held = false),
+            CoinStatus("KRW-AAVE", buyActive = false, held = false),
+            CoinStatus("KRW-BTC", buyActive = false, held = false),
+        )
+
+        val sorted = filterAndSortCoins(coins, sorts = emptyList())
+
+        assertEquals(listOf("KRW-AAVE", "KRW-BTC", "KRW-XRP"), sorted.map { it.market })
+    }
+
+    @Test
+    fun coinSearchMatchesDisplayedCoinNameCaseInsensitively() {
+        val coins = listOf(
+            CoinStatus("KRW-BTC", buyActive = false, held = false, purchaseCost = 123_456.0),
+            CoinStatus("KRW-WBTC", buyActive = false, held = false),
+            CoinStatus("KRW-ETH", buyActive = false, held = false, purchaseCost = 123_456.0),
+        )
+
+        val result = filterAndSortCoins(coins, searchQuery = "bt")
+
+        assertEquals(listOf("KRW-BTC", "KRW-WBTC"), result.map { it.market })
+    }
+
+    @Test
     fun sortHeaderCyclesDescendingAscendingAndOffWithoutRemovingOtherSorts() {
         val first = toggleCoinSort(emptyList(), CoinSortField.PURCHASE_COST)
         val withSecond = toggleCoinSort(first, CoinSortField.CURRENT_VALUE)
