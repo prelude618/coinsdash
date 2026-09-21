@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
@@ -80,7 +81,7 @@ internal fun filterAndSortCoins(
     val filtered = coins.filter { coin ->
         (held == BooleanColumnFilter.ALL || coin.held == (held == BooleanColumnFilter.YES)) &&
             (buyActive == BooleanColumnFilter.ALL || coin.buyActive == (buyActive == BooleanColumnFilter.YES)) &&
-            (normalizedQuery.isEmpty() || marketDisplayName(coin.market).contains(normalizedQuery, ignoreCase = true))
+            (normalizedQuery.isEmpty() || marketDisplayName(coin.market).startsWith(normalizedQuery, ignoreCase = true))
     }
     if (sorts.isEmpty()) return filtered.sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
     return filtered.sortedWith { left, right ->
@@ -94,6 +95,18 @@ internal fun filterAndSortCoins(
         }
         left.market.compareTo(right.market)
     }
+}
+
+private const val MAX_SEARCH_SUGGESTIONS = 8
+
+internal fun coinSearchSuggestions(coins: List<CoinStatus>, searchQuery: String): List<CoinStatus> {
+    val query = searchQuery.trim()
+    if (query.isEmpty()) return emptyList()
+    return coins.asSequence()
+        .filter { marketDisplayName(it.market).startsWith(query, ignoreCase = true) }
+        .sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
+        .take(MAX_SEARCH_SUGGESTIONS)
+        .toList()
 }
 
 private val coinWidth = 70.dp
@@ -112,22 +125,18 @@ internal fun CoinsScreen(
     state: CoinListUiState,
     onStateChange: (CoinListUiState) -> Unit,
 ) {
-    val coins = filterAndSortCoins(
-        snapshot?.registered.orEmpty(),
-        state.heldFilter,
-        state.buyActiveFilter,
-        state.sorts,
-        state.searchQuery,
-    )
+    val allCoins = snapshot?.registered.orEmpty()
+    val coins = remember(allCoins, state.heldFilter, state.buyActiveFilter, state.sorts, state.searchQuery) {
+        filterAndSortCoins(
+            allCoins,
+            state.heldFilter,
+            state.buyActiveFilter,
+            state.sorts,
+            state.searchQuery,
+        )
+    }
     val searchSuggestions = remember(snapshot?.registered, state.searchQuery) {
-        val query = state.searchQuery.trim()
-        if (query.isEmpty()) {
-            emptyList()
-        } else {
-            snapshot?.registered.orEmpty()
-                .filter { marketDisplayName(it.market).contains(query, ignoreCase = true) }
-                .sortedBy { marketDisplayName(it.market).uppercase(Locale.US) }
-        }
+        coinSearchSuggestions(allCoins, state.searchQuery)
     }
     val horizontalScroll = rememberScrollState()
 
@@ -172,7 +181,7 @@ private fun CoinSearchField(
     onQueryChange: (String) -> Unit,
     onCoinSelected: (CoinStatus) -> Unit,
 ) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
@@ -186,16 +195,27 @@ private fun CoinSearchField(
                 }
             },
         )
-        DropdownMenu(
-            expanded = query.isNotBlank() && suggestions.isNotEmpty(),
-            onDismissRequest = {},
-            modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
-        ) {
-            suggestions.forEach { coin ->
-                DropdownMenuItem(
-                    text = { Text(marketDisplayName(coin.market), fontWeight = FontWeight.Bold) },
-                    onClick = { onCoinSelected(coin) },
-                )
+        if (query.isNotBlank() && suggestions.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
+                tonalElevation = 2.dp,
+                shadowElevation = 2.dp,
+            ) {
+                LazyColumn {
+                    items(suggestions, key = { it.market }) { coin ->
+                        TextButton(
+                            onClick = { onCoinSelected(coin) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                marketDisplayName(coin.market),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
             }
         }
     }

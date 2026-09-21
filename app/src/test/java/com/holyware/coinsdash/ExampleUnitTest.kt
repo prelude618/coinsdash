@@ -12,6 +12,7 @@ import com.holyware.coinsdash.ui.screens.CoinSortField
 import com.holyware.coinsdash.ui.screens.SortDirection
 import com.holyware.coinsdash.ui.screens.botPresentation
 import com.holyware.coinsdash.ui.screens.buyTrackingDisplay
+import com.holyware.coinsdash.ui.screens.coinSearchSuggestions
 import com.holyware.coinsdash.ui.screens.filterAndSortCoins
 import com.holyware.coinsdash.ui.screens.sellTrackingDisplay
 import com.holyware.coinsdash.ui.screens.toggleCoinSort
@@ -182,7 +183,7 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun coinSearchMatchesDisplayedCoinNameCaseInsensitively() {
+    fun coinSearchMatchesOnlyFromFirstCharacterCaseInsensitively() {
         val coins = listOf(
             CoinStatus("KRW-BTC", buyActive = false, held = false, purchaseCost = 123_456.0),
             CoinStatus("KRW-WBTC", buyActive = false, held = false),
@@ -191,7 +192,19 @@ class ExampleUnitTest {
 
         val result = filterAndSortCoins(coins, searchQuery = "bt")
 
-        assertEquals(listOf("KRW-BTC", "KRW-WBTC"), result.map { it.market })
+        assertEquals(listOf("KRW-BTC"), result.map { it.market })
+    }
+
+    @Test
+    fun coinSearchSuggestionsArePrefixMatchedAndBounded() {
+        val coins = (0..20).map {
+            CoinStatus("KRW-A${it.toString().padStart(2, '0')}", buyActive = false, held = false)
+        } + CoinStatus("KRW-XA", buyActive = false, held = false)
+
+        val result = coinSearchSuggestions(coins, "a")
+
+        assertEquals(8, result.size)
+        assertEquals((0..7).map { "KRW-A${it.toString().padStart(2, '0')}" }, result.map { it.market })
     }
 
     @Test
