@@ -18,7 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal enum class AuthStatus { CHECKING, USERNAME_REQUIRED, AUTHENTICATED, SIGNED_OUT }
+internal enum class AuthStatus { CHECKING, USERNAME_REQUIRED, CREDENTIALS_REQUIRED, AUTHENTICATED, SIGNED_OUT }
 
 internal data class AuthUiState(
     val status: AuthStatus = AuthStatus.CHECKING,
@@ -91,12 +91,18 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             }.onSuccess { profile ->
                 mutableState.value = DashboardUiState(
                     auth = AuthUiState(
-                        status = if (profile.requiresUsername) AuthStatus.USERNAME_REQUIRED else AuthStatus.AUTHENTICATED,
+                        status = when {
+                            profile.disabled -> AuthStatus.SIGNED_OUT
+                            profile.requiresUsername -> AuthStatus.USERNAME_REQUIRED
+                            profile.requiresCredentials -> AuthStatus.CREDENTIALS_REQUIRED
+                            else -> AuthStatus.AUTHENTICATED
+                        },
                         email = profile.email.ifBlank { email },
                         username = profile.username.ifBlank { null },
+                        error = if (profile.disabled) "관리자에 의해 사용이 중지된 계정입니다." else null,
                     ),
                 )
-                if (!profile.requiresUsername) refresh()
+                if (!profile.requiresUsername && !profile.requiresCredentials && !profile.disabled) refresh()
             }.onFailure { error ->
                 if (error is AuthenticationRequiredException) {
                     handleAuthenticationFailure(error.message)
@@ -205,6 +211,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun updateKeys(accessKey: String, secretKey: String): Result<Unit> = runCatching {
         val token = authManager.idToken()
         withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
+        if (mutableState.value.auth.status == AuthStatus.CREDENTIALS_REQUIRED) {
+            mutableState.value = mutableState.value.copy(
+                auth = mutableState.value.auth.copy(status = AuthStatus.AUTHENTICATED),
+                connection = ConnectionUiState(),
+            )
+        }
         refresh()
     }.onFailure { error ->
         if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
@@ -215,12 +227,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val profile = withContext(Dispatchers.IO) { repository.setUsername(token, username) }
         mutableState.value = DashboardUiState(
             auth = AuthUiState(
-                status = AuthStatus.AUTHENTICATED,
+                status = if (profile.requiresCredentials) AuthStatus.CREDENTIALS_REQUIRED else AuthStatus.AUTHENTICATED,
                 email = profile.email.ifBlank { authManager.currentEmail },
                 username = profile.username,
             ),
         )
-        refresh()
+        if (!profile.requiresCredentials) refresh()
     }.onFailure { error ->
         if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
     }

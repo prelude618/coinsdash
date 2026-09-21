@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.holyware.coinsdash.DashboardUiState
@@ -112,6 +113,69 @@ internal fun UsernameSetupScreen(
 }
 
 @Composable
+internal fun CredentialsSetupScreen(
+    username: String,
+    onSave: suspend (String, String) -> Result<Unit>,
+) {
+    var access by remember { mutableStateOf("") }
+    var secret by remember { mutableStateOf("") }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("업비트 연결", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("아이디: $username", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            Text("본인의 업비트 API 키를 등록해야 전용 봇이 시작됩니다. 출금 권한은 부여하지 마세요.")
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                access,
+                { access = it; error = null },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Access Key (필수)") },
+                singleLine = true,
+                enabled = !saving,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                secret,
+                { secret = it; error = null },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Secret Key (필수)") },
+                singleLine = true,
+                enabled = !saving,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            if (error != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(Modifier.height(16.dp))
+            Button(
+                enabled = !saving && access.isNotBlank() && secret.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    saving = true
+                    error = null
+                    scope.launch {
+                        onSave(access.trim(), secret.trim())
+                            .onSuccess { access = ""; secret = "" }
+                            .onFailure { error = it.message ?: "업비트 연결에 실패했습니다." }
+                        saving = false
+                    }
+                },
+            ) { Text(if (saving) "검증 중…" else "검증 후 봇 시작") }
+        }
+    }
+}
+
+@Composable
 internal fun LoginScreen(state: DashboardUiState, onSignIn: (Context) -> Unit) {
     val context = LocalContext.current
     Surface(Modifier.fillMaxSize()) {
@@ -143,4 +207,10 @@ private fun LoginScreenPreview() {
 @Composable
 private fun UsernameSetupScreenPreview() {
     CoinSDashTheme(dynamicColor = false) { UsernameSetupScreen("preview@coinsdance.app") { Result.success(Unit) } }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 800)
+@Composable
+private fun CredentialsSetupScreenPreview() {
+    CoinSDashTheme(dynamicColor = false) { CredentialsSetupScreen("preview-user") { _, _ -> Result.success(Unit) } }
 }

@@ -7,7 +7,13 @@ import java.net.URL
 import java.time.Instant
 
 class DashboardRepository {
-    data class UserProfile(val email: String, val username: String, val requiresUsername: Boolean)
+    data class UserProfile(
+        val email: String,
+        val username: String,
+        val requiresUsername: Boolean,
+        val requiresCredentials: Boolean,
+        val disabled: Boolean,
+    )
 
     fun fetchProfile(idToken: String): UserProfile = request(idToken, "GET", "/api/v1/profile").toUserProfile()
 
@@ -111,6 +117,8 @@ private fun JSONObject.toUserProfile() = DashboardRepository.UserProfile(
     email = optString("email"),
     username = optString("username"),
     requiresUsername = optBoolean("requires_username", optString("username").isBlank()),
+    requiresCredentials = optBoolean("requires_credentials"),
+    disabled = optBoolean("disabled"),
 )
 
 private fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
