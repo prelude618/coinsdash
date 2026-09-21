@@ -1,10 +1,15 @@
 package com.holyware.coinsdash.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -21,11 +26,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.holyware.coinsdash.AuthStatus
 import com.holyware.coinsdash.DashboardViewModel
+import com.holyware.coinsdash.R
 import com.holyware.coinsdash.ui.screens.AuthenticationLoadingScreen
 import com.holyware.coinsdash.ui.screens.CoinListUiState
 import com.holyware.coinsdash.ui.screens.CoinsScreen
@@ -69,9 +78,18 @@ fun CoinSDashApp(viewModel: DashboardViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Coinsdance", fontWeight = FontWeight.Bold)
-                        Text("CoinSDance 실시간 관제", style = MaterialTheme.typography.labelSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.coinsdance_logo),
+                            contentDescription = "Coinsdance 로고",
+                            modifier = Modifier.size(36.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text("Coinsdance", fontWeight = FontWeight.Bold)
+                            Text("CoinSDance 실시간 관제", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 },
                 actions = {

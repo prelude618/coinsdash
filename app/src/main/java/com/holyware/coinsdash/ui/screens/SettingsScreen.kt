@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.holyware.coinsdash.BuildConfig
 import com.holyware.coinsdash.DashboardUiState
 import com.holyware.coinsdash.ui.preview.PreviewData
 import com.holyware.coinsdash.ui.theme.CoinSDashTheme
@@ -46,6 +47,8 @@ internal fun SettingsScreen(
         item { Text("업비트 API 키", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         item { Text("키는 앱에 저장하지 않고 HTTPS로 서버에 한 번 전달합니다. 서버는 새 키를 검증한 후 교체해야 합니다.", style = MaterialTheme.typography.bodySmall) }
         item { OutlinedButton(onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
+        item { HorizontalDivider() }
+        item { Text("앱 버전 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
     if (showKeys) KeyDialog(onUpdateKeys) { showKeys = false }
 }
