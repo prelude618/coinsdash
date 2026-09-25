@@ -176,6 +176,32 @@ internal fun CredentialsSetupScreen(
 }
 
 @Composable
+internal fun ApprovalPendingScreen(
+    username: String,
+    email: String,
+    onRefresh: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("가입승인 대기", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("아이디: $username", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(email, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(20.dp))
+            Text("가입 절차와 업비트 API 키 등록이 완료되었습니다. 관리자가 가입을 승인하면 사용자 전용 봇이 자동으로 시작됩니다.")
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("승인 상태 새로고침") }
+            OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") }
+        }
+    }
+}
+
+@Composable
 internal fun LoginScreen(state: DashboardUiState, onSignIn: (Context) -> Unit) {
     val context = LocalContext.current
     Surface(Modifier.fillMaxSize()) {
@@ -213,4 +239,12 @@ private fun UsernameSetupScreenPreview() {
 @Composable
 private fun CredentialsSetupScreenPreview() {
     CoinSDashTheme(dynamicColor = false) { CredentialsSetupScreen("preview-user") { _, _ -> Result.success(Unit) } }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 800)
+@Composable
+private fun ApprovalPendingScreenPreview() {
+    CoinSDashTheme(dynamicColor = false) {
+        ApprovalPendingScreen("preview-user", "preview@coinsdance.app", {}, {})
+    }
 }

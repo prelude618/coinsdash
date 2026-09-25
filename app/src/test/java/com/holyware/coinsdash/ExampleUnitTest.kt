@@ -3,6 +3,7 @@ package com.holyware.coinsdash
 import com.holyware.coinsdash.data.BotStatus
 import com.holyware.coinsdash.data.CoinStatus
 import com.holyware.coinsdash.data.DashboardSnapshot
+import com.holyware.coinsdash.data.DashboardRepository
 import com.holyware.coinsdash.ui.components.marketDisplayName
 import com.holyware.coinsdash.ui.screens.BooleanColumnFilter
 import com.holyware.coinsdash.ui.screens.BotPresentation
@@ -22,6 +23,22 @@ import org.junit.Test
 
 class ExampleUnitTest {
     private val email = "prelude618@gmail.com"
+
+    @Test
+    fun completedEnrollmentWaitsForApproval() {
+        val profile = DashboardRepository.UserProfile(
+            email = "new@example.com",
+            username = "new-user",
+            requiresUsername = false,
+            requiresCredentials = false,
+            disabled = false,
+            approved = false,
+            role = "member",
+            membershipTier = "standard",
+        )
+
+        assertEquals(AuthStatus.APPROVAL_REQUIRED, profile.authStatus())
+    }
 
     @Test
     fun usernameValidationMatchesSignupRules() {

@@ -18,7 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal enum class AuthStatus { CHECKING, USERNAME_REQUIRED, CREDENTIALS_REQUIRED, AUTHENTICATED, SIGNED_OUT }
+internal enum class AuthStatus { CHECKING, USERNAME_REQUIRED, CREDENTIALS_REQUIRED, APPROVAL_REQUIRED, AUTHENTICATED, SIGNED_OUT }
 
 internal data class AuthUiState(
     val status: AuthStatus = AuthStatus.CHECKING,
@@ -61,6 +61,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val mutableState = MutableStateFlow(DashboardUiState())
     internal val state: StateFlow<DashboardUiState> = mutableState.asStateFlow()
     private var refreshJob: Job? = null
+    private var approvalJob: Job? = null
 
     init {
         initializeAuthentication()
@@ -68,7 +69,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             while (isActive) {
                 delay(5_000)
-                refresh()
+                if (mutableState.value.auth.status == AuthStatus.APPROVAL_REQUIRED) {
+                    checkApproval()
+                } else {
+                    refresh()
+                }
             }
         }
     }
@@ -91,18 +96,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             }.onSuccess { profile ->
                 mutableState.value = DashboardUiState(
                     auth = AuthUiState(
-                        status = when {
-                            profile.disabled -> AuthStatus.SIGNED_OUT
-                            profile.requiresUsername -> AuthStatus.USERNAME_REQUIRED
-                            profile.requiresCredentials -> AuthStatus.CREDENTIALS_REQUIRED
-                            else -> AuthStatus.AUTHENTICATED
-                        },
+                        status = profile.authStatus(),
                         email = profile.email.ifBlank { email },
                         username = profile.username.ifBlank { null },
                         error = if (profile.disabled) "관리자에 의해 사용이 중지된 계정입니다." else null,
                     ),
                 )
-                if (!profile.requiresUsername && !profile.requiresCredentials && !profile.disabled) refresh()
+                if (profile.authStatus() == AuthStatus.AUTHENTICATED) refresh()
             }.onFailure { error ->
                 if (error is AuthenticationRequiredException) {
                     handleAuthenticationFailure(error.message)
@@ -122,6 +122,29 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun retryProfile() {
         authManager.currentEmail?.let(::loadProfile) ?: run {
             mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.SIGNED_OUT))
+        }
+    }
+
+    private fun checkApproval() {
+        if (approvalJob?.isActive == true) return
+        val current = mutableState.value
+        if (current.auth.status != AuthStatus.APPROVAL_REQUIRED) return
+        approvalJob = viewModelScope.launch {
+            runCatching {
+                val token = authManager.idToken()
+                withContext(Dispatchers.IO) { repository.fetchProfile(token) }
+            }.onSuccess { profile ->
+                if (profile.disabled) {
+                    handleAuthenticationFailure("관리자에 의해 사용이 중지된 계정입니다.")
+                } else if (profile.authStatus() == AuthStatus.AUTHENTICATED) {
+                    mutableState.value = DashboardUiState(
+                        auth = current.auth.copy(status = AuthStatus.AUTHENTICATED),
+                    )
+                    refresh()
+                }
+            }.onFailure { error ->
+                if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
+            }
         }
     }
 
@@ -171,6 +194,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun onForeground() {
         val current = mutableState.value
+        if (current.auth.status == AuthStatus.APPROVAL_REQUIRED) {
+            checkApproval()
+            return
+        }
         if (current.auth.status != AuthStatus.AUTHENTICATED) return
         refreshJob?.cancel()
         mutableState.value = current.copy(
@@ -182,6 +209,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun signIn(context: Context) {
         if (mutableState.value.auth.status == AuthStatus.CHECKING) return
         refreshJob?.cancel()
+        approvalJob?.cancel()
         mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.CHECKING))
         viewModelScope.launch {
             runCatching { GoogleAuthManager(context).signIn() }
@@ -201,6 +229,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun signOut() {
         refreshJob?.cancel()
+        approvalJob?.cancel()
         mutableState.value = DashboardUiState(auth = AuthUiState(status = AuthStatus.CHECKING))
         viewModelScope.launch {
             runCatching { authManager.signOut() }
@@ -210,14 +239,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun updateKeys(accessKey: String, secretKey: String): Result<Unit> = runCatching {
         val token = authManager.idToken()
-        withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
-        if (mutableState.value.auth.status == AuthStatus.CREDENTIALS_REQUIRED) {
-            mutableState.value = mutableState.value.copy(
-                auth = mutableState.value.auth.copy(status = AuthStatus.AUTHENTICATED),
-                connection = ConnectionUiState(),
-            )
-        }
-        refresh()
+        val profile = withContext(Dispatchers.IO) { repository.updateUpbitKeys(token, accessKey, secretKey) }
+        mutableState.value = DashboardUiState(
+            auth = mutableState.value.auth.copy(status = profile.authStatus()),
+        )
+        if (profile.authStatus() == AuthStatus.AUTHENTICATED) refresh()
     }.onFailure { error ->
         if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
     }
@@ -227,18 +253,19 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         val profile = withContext(Dispatchers.IO) { repository.setUsername(token, username) }
         mutableState.value = DashboardUiState(
             auth = AuthUiState(
-                status = if (profile.requiresCredentials) AuthStatus.CREDENTIALS_REQUIRED else AuthStatus.AUTHENTICATED,
+                status = profile.authStatus(),
                 email = profile.email.ifBlank { authManager.currentEmail },
                 username = profile.username,
             ),
         )
-        if (!profile.requiresCredentials) refresh()
+        if (profile.authStatus() == AuthStatus.AUTHENTICATED) refresh()
     }.onFailure { error ->
         if (error is AuthenticationRequiredException) handleAuthenticationFailure(error.message)
     }
 
     private fun handleAuthenticationFailure(message: String?) {
         refreshJob?.cancel()
+        approvalJob?.cancel()
         viewModelScope.launch { runCatching { authManager.signOut() } }
         mutableState.value = DashboardUiState(
             auth = AuthUiState(
@@ -247,4 +274,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             ),
         )
     }
+}
+
+internal fun DashboardRepository.UserProfile.authStatus(): AuthStatus = when {
+    disabled -> AuthStatus.SIGNED_OUT
+    requiresUsername -> AuthStatus.USERNAME_REQUIRED
+    requiresCredentials -> AuthStatus.CREDENTIALS_REQUIRED
+    !approved -> AuthStatus.APPROVAL_REQUIRED
+    else -> AuthStatus.AUTHENTICATED
 }

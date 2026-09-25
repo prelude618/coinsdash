@@ -36,6 +36,7 @@ import com.holyware.coinsdash.AuthStatus
 import com.holyware.coinsdash.DashboardViewModel
 import com.holyware.coinsdash.R
 import com.holyware.coinsdash.ui.screens.AuthenticationLoadingScreen
+import com.holyware.coinsdash.ui.screens.ApprovalPendingScreen
 import com.holyware.coinsdash.ui.screens.CoinListUiState
 import com.holyware.coinsdash.ui.screens.CoinsScreen
 import com.holyware.coinsdash.ui.screens.HistoryScreen
@@ -68,6 +69,15 @@ fun CoinSDashApp(viewModel: DashboardViewModel) {
         }
         AuthStatus.CREDENTIALS_REQUIRED -> {
             CredentialsSetupScreen(state.auth.username.orEmpty(), viewModel::updateKeys)
+            return
+        }
+        AuthStatus.APPROVAL_REQUIRED -> {
+            ApprovalPendingScreen(
+                state.auth.username.orEmpty(),
+                state.auth.email.orEmpty(),
+                viewModel::retryProfile,
+                viewModel::signOut,
+            )
             return
         }
         AuthStatus.AUTHENTICATED -> Unit

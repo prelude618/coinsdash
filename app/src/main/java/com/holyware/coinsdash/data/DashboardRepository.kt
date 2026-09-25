@@ -13,6 +13,9 @@ class DashboardRepository {
         val requiresUsername: Boolean,
         val requiresCredentials: Boolean,
         val disabled: Boolean,
+        val approved: Boolean,
+        val role: String,
+        val membershipTier: String,
     )
 
     fun fetchProfile(idToken: String): UserProfile = request(idToken, "GET", "/api/v1/profile").toUserProfile()
@@ -67,14 +70,14 @@ class DashboardRepository {
         )
     }
 
-    fun updateUpbitKeys(idToken: String, accessKey: String, secretKey: String) {
+    fun updateUpbitKeys(idToken: String, accessKey: String, secretKey: String): UserProfile {
         require(accessKey.isNotBlank() && secretKey.isNotBlank()) { "Access Key와 Secret Key를 모두 입력하세요." }
-        request(
+        return request(
             idToken,
             "PUT",
             "/api/v1/credentials",
             JSONObject().put("access_key", accessKey.trim()).put("secret_key", secretKey.trim()).toString(),
-        )
+        ).toUserProfile()
     }
 
     private fun request(idToken: String, method: String, path: String, body: String? = null): JSONObject {
@@ -119,6 +122,9 @@ private fun JSONObject.toUserProfile() = DashboardRepository.UserProfile(
     requiresUsername = optBoolean("requires_username", optString("username").isBlank()),
     requiresCredentials = optBoolean("requires_credentials"),
     disabled = optBoolean("disabled"),
+    approved = optBoolean("approved"),
+    role = optString("role", "member"),
+    membershipTier = optString("membership_tier", "standard"),
 )
 
 private fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
