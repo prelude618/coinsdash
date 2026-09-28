@@ -132,7 +132,7 @@ internal fun CredentialsSetupScreen(
             Spacer(Modifier.height(8.dp))
             Text("아이디: $username", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
-            Text("본인의 업비트 API 키를 등록해야 전용 봇이 시작됩니다. 출금 권한은 부여하지 마세요.")
+            Text("필수 권한: 자산조회, 주문조회, 주문하기, 입금조회, 출금조회\n출금하기 권한은 부여하지 마세요.")
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 access,

@@ -45,7 +45,7 @@ internal fun SettingsScreen(
         item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("로그아웃") } }
         item { HorizontalDivider() }
         item { Text("업비트 API 키", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-        item { Text("키는 앱에 저장하지 않고 HTTPS로 서버에 한 번 전달합니다. 서버는 새 키를 검증한 후 교체해야 합니다.", style = MaterialTheme.typography.bodySmall) }
+        item { Text("필수 권한: 자산조회, 주문조회, 주문하기, 입금조회, 출금조회. 출금하기 권한은 부여하지 마세요. 키는 앱에 저장하지 않고 HTTPS로 서버에 한 번 전달합니다.", style = MaterialTheme.typography.bodySmall) }
         item { OutlinedButton(onClick = { showKeys = true }, modifier = Modifier.fillMaxWidth()) { Text("API 키 갱신") } }
         item { HorizontalDivider() }
         item { Text("앱 버전 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -65,6 +65,7 @@ private fun KeyDialog(onUpdateKeys: suspend (String, String) -> Result<Unit>, di
         title = { Text("업비트 API 키 갱신") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("필수 5개 권한을 모두 허용해야 합니다. 출금하기는 허용하지 마세요.", style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(access, { access = it }, label = { Text("Access Key") }, singleLine = true)
                 OutlinedTextField(secret, { secret = it }, label = { Text("Secret Key") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
