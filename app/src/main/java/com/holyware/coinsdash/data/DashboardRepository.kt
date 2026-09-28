@@ -34,12 +34,19 @@ class DashboardRepository {
         val json = request(idToken, "GET", "/api/v1/dashboard")
         val bot = json.getJSONObject("bot")
         val money = json.getJSONObject("money")
+        val funding = json.optJSONObject("funding") ?: JSONObject()
         return DashboardSnapshot(
             generatedAt = json.optString("generated_at"),
             bot = BotStatus(bot.optBoolean("alive"), bot.optString("last_heartbeat"), bot.nullableString("error")),
             money = MoneySummary(
                 money.optDouble("investment"), money.optDouble("cash"), money.optDouble("purchase_cost"),
                 money.optDouble("total_assets"), money.optDouble("coin_value"),
+            ),
+            funding = FundingSummary(
+                available = funding.optBoolean("available"),
+                totalDeposits = funding.optDouble("total_deposits"),
+                totalWithdrawals = funding.optDouble("total_withdrawals"),
+                updatedAt = funding.optString("updated_at"),
             ),
             buyTracking = json.optInt("buy_tracking"),
             sellTracking = json.optInt("sell_tracking"),
@@ -110,6 +117,14 @@ class DashboardRepository {
             if (code == 409 && errorCode == "username_taken") throw UsernameTakenException()
             if (code == 409 && errorCode == "username_already_set") throw UsernameAlreadySetException()
             if (code == 400 && errorCode == "invalid_username") throw UsernameInvalidException()
+            if (code == 400 && errorCode == "missing_upbit_permissions") {
+                val payload = runCatching { JSONObject(text) }.getOrDefault(JSONObject())
+                val missing = payload.optJSONArray("missing_permissions")
+                    ?.let { array -> (0 until array.length()).map(array::optString).filter(String::isNotBlank) }
+                    .orEmpty()
+                val detail = if (missing.isEmpty()) "" else " (누락: ${missing.joinToString()})"
+                error("업비트 필수 권한 5개를 모두 허용해야 합니다.$detail")
+            }
             if (code !in 200..299) error("서버 오류 $code: ${text.take(300)}")
             if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {

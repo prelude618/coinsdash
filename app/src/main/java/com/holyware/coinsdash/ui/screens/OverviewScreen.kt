@@ -93,10 +93,32 @@ internal fun OverviewScreen(state: DashboardUiState) {
                 MinimumBuyCard(snapshot?.minimumBuy ?: 0.0, Modifier.weight(1f))
             }
         }
+        item {
+            val funding = snapshot?.funding
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FundingCard("누적 입금액", funding?.totalDeposits ?: 0.0, funding?.available == true, Modifier.weight(1f))
+                FundingCard("누적 출금액", funding?.totalWithdrawals ?: 0.0, funding?.available == true, Modifier.weight(1f))
+            }
+        }
         item { Text("최근 등록해제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         if (snapshot?.delistings.isNullOrEmpty()) item { EmptyCard("기록된 등록해제 종목이 없습니다.") }
         else items(snapshot!!.delistings.take(5), key = { it.market + it.occurredAt }) { DelistingRow(it) }
         item { Spacer(Modifier.height(12.dp)) }
+    }
+}
+
+@Composable
+private fun FundingCard(label: String, value: Double, available: Boolean, modifier: Modifier) {
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(14.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(
+                if (available) won(value) else "조회 권한 필요",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (available) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 

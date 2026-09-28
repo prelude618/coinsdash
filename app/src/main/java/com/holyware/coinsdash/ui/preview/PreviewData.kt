@@ -10,6 +10,7 @@ import com.holyware.coinsdash.data.CoinStatus
 import com.holyware.coinsdash.data.DashboardSnapshot
 import com.holyware.coinsdash.data.Delisting
 import com.holyware.coinsdash.data.MoneySummary
+import com.holyware.coinsdash.data.FundingSummary
 import com.holyware.coinsdash.data.Trade
 
 internal object PreviewData {
@@ -24,6 +25,7 @@ internal object PreviewData {
         generatedAt = "2026-09-18T20:44:33Z",
         bot = BotStatus(true, "2026-09-18T20:44:33Z"),
         money = MoneySummary(32_100_000.0, 5_400_000.0, 26_700_000.0, 31_800_000.0, 26_400_000.0),
+        funding = FundingSummary(true, 35_000_000.0, 2_100_000.0, "2026-09-18T20:44:33Z"),
         buyTracking = 12,
         sellTracking = 8,
         buyHooked = 3,

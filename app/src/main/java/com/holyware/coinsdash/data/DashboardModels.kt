@@ -14,6 +14,13 @@ data class BotStatus(
     val error: String? = null,
 )
 
+data class FundingSummary(
+    val available: Boolean = false,
+    val totalDeposits: Double = 0.0,
+    val totalWithdrawals: Double = 0.0,
+    val updatedAt: String = "",
+)
+
 data class CoinStatus(
     val market: String,
     val buyActive: Boolean,
@@ -45,6 +52,7 @@ data class DashboardSnapshot(
     val generatedAt: String = "",
     val bot: BotStatus = BotStatus(),
     val money: MoneySummary = MoneySummary(),
+    val funding: FundingSummary = FundingSummary(),
     val buyTracking: Int = 0,
     val sellTracking: Int = 0,
     val buyHooked: Int = 0,
