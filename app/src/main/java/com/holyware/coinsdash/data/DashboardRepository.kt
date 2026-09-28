@@ -98,8 +98,14 @@ class DashboardRepository {
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             val errorCode = runCatching { JSONObject(text).optString("error") }.getOrDefault("")
-            if (code == 401 || code == 403) {
-                throw AuthenticationRequiredException("Google 인증을 다시 확인해야 합니다. 로그인해 주세요.")
+            if (code == 401) throw AuthenticationRequiredException("Google 인증을 다시 확인해야 합니다. 로그인해 주세요.")
+            if (code == 403) {
+                when (errorCode) {
+                    "approval_required" -> throw ApprovalRequiredException()
+                    "user_disabled" -> throw UserDisabledException()
+                    "email_not_verified" -> throw AuthenticationRequiredException("Google 이메일 인증을 확인할 수 없습니다. 다시 로그인해 주세요.")
+                    else -> error("서버 접근 거부: ${text.take(300)}")
+                }
             }
             if (code == 409 && errorCode == "username_taken") throw UsernameTakenException()
             if (code == 409 && errorCode == "username_already_set") throw UsernameAlreadySetException()
