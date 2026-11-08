@@ -11,6 +11,9 @@ data class MoneySummary(
 data class BotStatus(
     val alive: Boolean = false,
     val lastHeartbeat: String = "",
+    val condition: String = "",
+    val title: String = "",
+    val detail: String = "",
     val error: String? = null,
 )
 

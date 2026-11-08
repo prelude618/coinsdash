@@ -37,7 +37,14 @@ class DashboardRepository {
         val funding = json.optJSONObject("funding") ?: JSONObject()
         return DashboardSnapshot(
             generatedAt = json.optString("generated_at"),
-            bot = BotStatus(bot.optBoolean("alive"), bot.optString("last_heartbeat"), bot.nullableString("error")),
+            bot = BotStatus(
+                alive = bot.optBoolean("alive"),
+                lastHeartbeat = bot.optString("last_heartbeat"),
+                condition = bot.optString("condition"),
+                title = bot.optString("title"),
+                detail = bot.optString("detail"),
+                error = bot.nullableString("error"),
+            ),
             money = MoneySummary(
                 money.optDouble("investment"), money.optDouble("cash"), money.optDouble("purchase_cost"),
                 money.optDouble("total_assets"), money.optDouble("coin_value"),

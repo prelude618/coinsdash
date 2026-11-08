@@ -81,6 +81,16 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun exchangeMaintenanceIsExplainedInsteadOfReportedAsOutage() {
+        val state = DashboardUiState(
+            snapshot = DashboardSnapshot(bot = BotStatus(alive = false, condition = "exchange_wait", title = "업비트 점검 또는 연결 지연")),
+            auth = AuthUiState(AuthStatus.AUTHENTICATED, email),
+            connection = ConnectionUiState(ConnectionStatus.CONNECTED),
+        )
+        assertEquals(BotPresentation.EXCHANGE_WAIT, botPresentation(state))
+    }
+
+    @Test
     fun signedOutIsNotReportedAsOutage() {
         val signedOut = DashboardUiState(auth = AuthUiState(AuthStatus.SIGNED_OUT))
         assertEquals(BotPresentation.NEEDS_LOGIN, botPresentation(signedOut))

@@ -41,17 +41,18 @@ internal fun buyTrackingDisplay(snapshot: DashboardSnapshot?): Pair<Int, Int> =
 internal fun sellTrackingDisplay(snapshot: DashboardSnapshot?): Pair<Int, Int> =
     (snapshot?.sellHooked ?: 0) to (snapshot?.sellTracking ?: 0)
 
-internal enum class BotPresentation { HEALTHY, CHECKING, NEEDS_LOGIN, OUTAGE }
+internal enum class BotPresentation { HEALTHY, CHECKING, EXCHANGE_WAIT, NEEDS_LOGIN, OUTAGE }
 
 internal fun botPresentation(state: DashboardUiState): BotPresentation {
     if (state.auth.status != AuthStatus.AUTHENTICATED) return BotPresentation.NEEDS_LOGIN
     return when (state.connection.status) {
         ConnectionStatus.LOADING -> BotPresentation.CHECKING
         ConnectionStatus.ERROR -> BotPresentation.OUTAGE
-        ConnectionStatus.CONNECTED -> when (state.snapshot?.bot?.alive) {
-            true -> BotPresentation.HEALTHY
-            false -> BotPresentation.OUTAGE
-            null -> BotPresentation.CHECKING
+        ConnectionStatus.CONNECTED -> when {
+            state.snapshot?.bot?.condition == "exchange_wait" -> BotPresentation.EXCHANGE_WAIT
+            state.snapshot?.bot?.alive == true -> BotPresentation.HEALTHY
+            state.snapshot?.bot?.alive == false -> BotPresentation.OUTAGE
+            else -> BotPresentation.CHECKING
         }
     }
 }
@@ -129,6 +130,7 @@ private fun BotCard(state: DashboardUiState) {
     val color = when (presentation) {
         BotPresentation.HEALTHY -> Color(0xFF16803A)
         BotPresentation.CHECKING, BotPresentation.NEEDS_LOGIN -> MaterialTheme.colorScheme.primary
+        BotPresentation.EXCHANGE_WAIT -> Color(0xFF9A6700)
         BotPresentation.OUTAGE -> MaterialTheme.colorScheme.error
     }
     Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = .11f))) {
@@ -139,6 +141,7 @@ private fun BotCard(state: DashboardUiState) {
                     when (presentation) {
                         BotPresentation.HEALTHY -> "  봇 정상 실행 중"
                         BotPresentation.CHECKING -> "  봇 상태 확인 중"
+                        BotPresentation.EXCHANGE_WAIT -> "  ${bot?.title?.ifBlank { "거래소 점검 또는 연결 지연" }}"
                         BotPresentation.NEEDS_LOGIN -> "  Google 로그인 필요"
                         BotPresentation.OUTAGE -> "  봇 장애 또는 연결 끊김"
                     },
@@ -146,8 +149,13 @@ private fun BotCard(state: DashboardUiState) {
                     color = color,
                 )
             }
-            val error = if (presentation == BotPresentation.OUTAGE) state.connection.error ?: bot?.error else bot?.error
-            if (!error.isNullOrBlank()) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            val botDetail = bot?.detail?.takeIf(String::isNotBlank) ?: bot?.error
+            val error = when (presentation) {
+                BotPresentation.EXCHANGE_WAIT -> botDetail
+                BotPresentation.OUTAGE -> state.connection.error ?: botDetail
+                else -> botDetail
+            }
+            if (!error.isNullOrBlank()) Text(error, color = color, style = MaterialTheme.typography.bodySmall)
             if (bot != null) Text("마지막 신호: ${localTime(bot.lastHeartbeat)}", style = MaterialTheme.typography.labelMedium)
         }
     }
